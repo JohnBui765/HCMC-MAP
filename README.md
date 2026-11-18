@@ -11,8 +11,12 @@ Address: **https://johnbui765.github.io/HCMC-MAP/**
   30 June 2025, 22 from the old city, 9 from Bình Dương and 7 from Bà Rịa – Vũng Tàu. The switch is
   at the top of Learn, Table, Practice and Progress; each level keeps its own progress.
 - **Grouped the way you already know the city.** Wards are grouped and numbered by the former
-  district each lies in (Quận 1 first, Côn Đảo last), with the old district lines drawn over them;
-  districts are grouped by the former province. Tap a group chip to fly to it.
+  district each lies in (Quận 1 first, Côn Đảo last), with the borders between those groups drawn
+  over them as solid lines (switch "Old districts" off to hide them). 12 wards straddle two former
+  districts; each is grouped with the one holding most of it, so there the group border follows the
+  ward's edge, and the true old border is drawn dashed wherever it differs (84 km in all). The
+  ward's card gives the split. Districts are grouped by the former province. Tap a group chip to
+  fly to it.
 - **The two levels are linked.** A ward's card shows its former district and what it was formed
   from, in the resolution's own list ("Phường 1, Phường 2 … (Quận 3)"); a district's card shows
   which of today's wards its land went into. Tap a name to jump to the other level.
@@ -85,6 +89,8 @@ What it does, in short:
    line, between those districts only. The former districts are then the union of their pieces,
    so both levels share one set of borders. 17 wards came from two or more districts; 12 are cut
    on the map, and in the other 5 the 2020 lines leave no visible piece (their cards still say so).
+   Gaps between the source shapes go to a neighbour; slivers outside the city's outline (where a
+   2020 line runs just past it) are left out, and specks under ~500 m² join the unit they touch.
 3. Everything is simplified together to about 30 m (shapely's coverage simplification, which keeps
    shared borders shared) and written in the app's own Mercator units of about 10 m.
 
@@ -100,7 +106,8 @@ smaller sizes from it; `maskable-512.png` has the outline at 77 % so it stays in
 ## Sources and licences
 
 - **Wards: boundaries, names, codes and areas:** the merger map at sapnhap.bando.com.vn, as
-  collected in the Vietnamese Provinces Database by Thang Le Quoc (dataset 5.2.0, MIT licence),
+  collected in the Vietnamese Provinces Database by Thang Le Quoc (dataset 5.2.0, MIT licence,
+  see `LICENSE-vietnamese-provinces-database.txt`),
   github.com/thanglequoc/vietnamese-provinces-database. The site itself states no licence.
   Areas are the site's own figures (together 6,780.43 km²; Resolution 202/2025/QH15 gives the
   city 6,772.59 km²).

@@ -59,8 +59,13 @@ def P(lon, lat): return [round(px(lon)), round(py(lat))]
 def proj(g): return shapely.transform(g, lambda a: __import__("numpy").column_stack([(a[:, 0] - PROJ["lon0"]) * PROJ["s"], (PROJ["mtop"] - 180 / math.pi * __import__("numpy").log(__import__("numpy").tan(math.pi / 4 + a[:, 1] * math.pi / 360))) * PROJ["s"]]))
 LAT0 = 10.8
 M_PER_UNIT = 10.0 * math.cos(math.radians(LAT0))      # metres per unit near the city
-KM2 = (M_PER_UNIT / 1000) ** 2                         # km² per unit²
-def km2(g): return g.area * KM2
+def lat_of(y):
+    m = PROJ['mtop'] - y / PROJ['s']
+    return (2 * math.atan(math.exp(m * math.pi / 180)) - math.pi / 2) * 180 / math.pi
+def km2(g):
+    """Area in km². A unit is 10 m × cos(latitude) on the ground, so each piece is scaled at its own
+    latitude (Côn Đảo, at 8.7°N, would otherwise come out about 1.3 % small)."""
+    return sum(p.area * (0.01 * math.cos(math.radians(lat_of(p.centroid.y)))) ** 2 for p in polys_of(g))
 
 # ---------------------------------------------------------------- compact path codec
 # "M x yl dx dy dx dy ... z" with integer units; negative numbers carry their own separator.
@@ -233,16 +238,23 @@ def load_mapping(path, units):
     bare = lambda s: ''.join(ch for ch in unicodedata.normalize('NFD', s.lower()) if unicodedata.category(ch) != 'Mn')
     by_bare = {bare(u['full']): u for u in units}
     for u in units: u['dset'], u['src'] = [], []
+    # The resolution lists the units of 30 June 2025. A row for an older unit, merged into one of them
+    # in an earlier round, shows through that unit (qua_don_vi), and its 'phan' describes the older
+    # unit, not the 2025 one: old Phường 13 (Gò Vấp) was split in January 2025 between Phường 14 and
+    # Phường 15, which then went wholly into An Hội Tây and An Hội Đông. So a 2025 unit counts as
+    # partly taken only when it went into more than one new unit, or its own row says so.
+    targets, own_part = {}, {}
+    for r in rows:
+        key = (r['qua_don_vi'] or r['xa_cu'], district_id(r['huyen_cu']))
+        targets.setdefault(key, set()).add(bare(r['xa_moi']))
+        if not r['qua_don_vi']: own_part[key] = own_part.get(key, False) or r['phan'] != 'toan_bo'
     for r in rows:
         u = by_full.get(r['xa_moi']) or by_bare[bare(r['xa_moi'])]
         did = district_id(r['huyen_cu'])
         if did not in u['dset']: u['dset'].append(did)
-        # The resolution lists the units of 30 June 2025; an older unit merged earlier shows through it.
         old = r['qua_don_vi'] or r['xa_cu']
-        part = r['phan'] != 'toan_bo'
-        hit = next((x for x in u['src'] if x[0] == old and x[1] == did), None)
-        if hit: hit[2] = hit[2] or part
-        else: u['src'].append([old, did, part])
+        if not any(x[0] == old and x[1] == did for x in u['src']):
+            u['src'].append([old, did, len(targets[(old, did)]) > 1 or own_part.get((old, did), False)])
     for u in units: assert u['dset'], u['full']
     print(f"mapping: {len(rows)} rows; units from 2+ former districts: {sum(len(u['dset']) > 1 for u in units)}")
 
@@ -286,12 +298,16 @@ def rebuild_faces(units, extra_lines):
             if a > ba: best, ba = i, a
         owner.append(best if best is not None and ba > 0.5 * f.area else None)
     # Orphans: gaps between source shapes. Small ones join the neighbour with the longest shared edge.
+    # A face outside the city's outline (where a cut line runs just past the edge) is never taken in.
+    shell = unary_union([Polygon(p.exterior) for p in polys_of(unary_union(geoms))])
+    outside = {k for k, f in enumerate(faces) if owner[k] is None and not shell.contains(f.representative_point())}
+    orphans = sum(1 for o in owner if o is None) - len(outside)
     ftree = STRtree(faces)
     changed = True
     while changed:
         changed = False
         for k, f in enumerate(faces):
-            if owner[k] is not None: continue
+            if owner[k] is not None or k in outside: continue
             if km2(f) > 0.5: continue
             best, bl = None, 0
             for j in ftree.query(f.buffer(0.5)):
@@ -299,13 +315,13 @@ def rebuild_faces(units, extra_lines):
                 l = f.boundary.intersection(faces[j].boundary).length
                 if l > bl: best, bl = owner[j], l
             if best is not None: owner[k] = best; changed = True
-    gaps = [km2(f) for k, f in enumerate(faces) if owner[k] is None]
-    print(f'faces: {len(faces):,}; left as holes: {len(gaps)} ({sum(gaps):.3f} km²)')
+    gaps = [km2(f) for k, f in enumerate(faces) if owner[k] is None and k not in outside]
+    print(f'faces: {len(faces):,}; gaps between source shapes: {orphans}, of which left as holes: {len(gaps)} '
+          f'({sum(gaps):.3f} km²); outside the outline, left out: {len(outside)} ({sum(km2(faces[k]) for k in outside):.4f} km²)')
     return faces, owner
 
 # ---------------------------------------------------------------- 2. former districts
 TOLERANCE = 3.0      # coverage simplification, in units (~30 m)
-SPLIT_AT = 0.90      # a unit with less than this share in one former district is cut
 def assign_districts(units, dists):
     gb = [d['gb'] for d in dists]
     idx = {d['id']: i for i, d in enumerate(dists)}
@@ -351,18 +367,24 @@ def district_of_faces(units, dists, faces, owner):
             if owner[k] is not None and units[owner[k]]['split']: groups.setdefault((owner[k], fd[k]), []).append(k)
         moved = 0
         for (ui, di), ks in groups.items():
-            piece = unary_union([faces[k] for k in ks])
-            thin = piece.buffer(-7).is_empty            # under ~140 m across everywhere
-            if km2(piece) >= 0.15 and not thin and piece.area >= 0.03 * units[ui]['geom'].area: continue
-            best, bl = None, 0
-            for k in ks:
-                for j in ftree.query(faces[k].buffer(0.5)):
-                    if owner[j] != ui or fd[j] == di: continue
-                    l = faces[k].boundary.intersection(faces[j].boundary).length
-                    if l > bl: best, bl = fd[j], l
-            if best is not None:
-                for k in ks: fd[k] = best
-                moved += 1
+            # The district's whole share of the unit goes if it is a sliver (under 0.15 km², under
+            # ~140 m across everywhere, or under 3 % of the unit). Otherwise only its stray fragments
+            # go: tiny or thin pieces apart from the main one; real pieces stay.
+            whole = unary_union([faces[k] for k in ks])
+            sliver = lambda q: km2(q) < 0.15 or q.buffer(-7).is_empty
+            if sliver(whole) or whole.area < 0.03 * units[ui]['geom'].area: pieces = [whole]
+            else: pieces = [q for q in polys_of(whole) if sliver(q)]
+            for piece in pieces:
+                pk = [k for k in ks if piece.contains(faces[k].representative_point())]
+                best, bl = None, 0
+                for k in pk:
+                    for j in ftree.query(faces[k].buffer(0.5)):
+                        if owner[j] != ui or fd[j] == di: continue
+                        l = faces[k].boundary.intersection(faces[j].boundary).length
+                        if l > bl: best, bl = fd[j], l
+                if best is not None:
+                    for k in pk: fd[k] = best
+                    moved += 1
         if not moved: break
     return fd
 
@@ -485,6 +507,25 @@ def main(db, adm2, world_atlas, mapping):
     print(f'atoms: {len(geoms)}; vertices before {int(shapely.get_num_coordinates(geoms).sum()):,}')
     simp = list(shapely.coverage_simplify(geoms, tolerance=TOLERANCE))
     print(f'vertices after {int(shapely.get_num_coordinates(simp).sum()):,}')
+    # Specks: a piece under ~500 m² that touches another atom (a sliver from a hairline gap in the
+    # source, cut off by the simplification) joins the atom it shares most border with. Islets in
+    # the sea touch nothing and stay.
+    speck = 500 / M_PER_UNIT ** 2
+    pieces = [(a, q) for a, g in enumerate(simp) for q in polys_of(g)]
+    ptree = STRtree([q for _, q in pieces])
+    goes = {}
+    for n, (a, q) in enumerate(pieces):
+        if q.area >= speck: continue
+        best, bl = None, 0
+        for m in ptree.query(q.buffer(0.5)):
+            b, r = pieces[m]
+            if m == n or b == a: continue
+            l = q.boundary.intersection(r.boundary).length
+            if l > bl: best, bl = b, l
+        if best is not None: goes[n] = best
+    if goes:
+        simp = [unary_union([q for n, (a, q) in enumerate(pieces) if goes.get(n, a) == t]).buffer(0) for t in range(len(simp))]
+    print(f'specks moved to the neighbour they touch: {len(goes)}')
 
     # Units and districts from their atoms.
     by_unit, by_dist = {}, {}
@@ -596,15 +637,14 @@ def main(db, adm2, world_atlas, mapping):
     provs, kh, land, pb, intl = load_context(db, world_atlas, city, ext)
     land_polys = [encode(rings_of(q)) for q in polys_of(land) if q.area > 50]
     water = lambda lon, lat: not land.contains(Point(px(lon), py(lat))) and not city.contains(Point(px(lon), py(lat)))
+    # Names of the neighbours, placed within ~26 km of the city: farther out the mist is solid and a
+    # label would never show (Cần Thơ and Cambodia lie beyond it).
     labels = []
     reach = city.buffer(2600)
-    for p in provs:
-        near = p['geom'].intersection(reach)
-        g = near if near.area > 4e5 else p['geom']
-        lab, sz = label_point(g)
-        labels.append({'t': p['n'].upper(), 'at': lab})
-    khn = kh.intersection(city.buffer(7000))
-    if not khn.is_empty: labels.append({'t': 'CAMBODIA', 'at': label_point(khn)[0]})
+    for name, g in [(p['n'].upper(), p['geom']) for p in provs] + [('CAMBODIA', kh)]:
+        near = g.intersection(reach)
+        if near.area > 4e5: labels.append({'t': name, 'at': label_point(near)[0]})
+        else: print(f'  no label for {name}: nothing of it within 26 km of the city')
     # (name, lon, lat, big, zoom from which it shows: the bay is narrow)
     seas = [('East Sea', 107.0, 10.12, True, 0), ('Gành Rái Bay', 107.02, 10.43, False, 0.09)]
     for t, lon, lat, big, mk in seas:
