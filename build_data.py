@@ -1,39 +1,54 @@
 #!/usr/bin/env python3
 """Build the map data embedded in index.html (<script id="map-data">).
 
-Two levels of Hồ Chí Minh City, as merged on 1 July 2025 (Resolution 202/2025/QH15):
-  w  the 168 commune-level units in force since 1 July 2025 (113 phường, 54 xã, 1 đặc khu;
-     Resolution 1685/NQ-UBTVQH15), grouped by the former district each lies in;
+Two levels of Hồ Chí Minh City, as merged on 1 July 2025 (Resolution 202/2025/QH15), on a map of
+the whole of Vietnam:
+  w  the 168 commune-level units in force since 1 July 2025 (113 wards, 54 communes, 1 special
+     zone; Resolution 1685/NQ-UBTVQH15), grouped by the former district each lies in, among the
+     34 provinces of today;
   d  the 38 former district-level units of 30 June 2025 (22 of the old city, 9 of Bình Dương,
-     7 of Bà Rịa – Vũng Tàu), grouped by the former province.
+     7 of Bà Rịa – Vũng Tàu), grouped by the former province, among the 63 provinces of before.
 
 Inputs
   <provinces-db>   a checkout of github.com/thanglequoc/vietnamese-provinces-database (MIT). Used:
                      json/geojson/79_ho_chi_minh/wards/*.geojson   the 168 units: code, name, area
-                     json/geojson/<nn>_*/<nn>_*.geojson            neighbouring provinces
+                     json/geojson/*/*.geojson                      the 34 provinces: code, area
+                     json/full_json_generated_data_vn_units.json   the 34 provinces: name, kind
                      dataset-generation-scripts/resources/gis/sapnhapbando_geo_objects.sql
                                                                   what each unit was formed from
                    Shapes and areas were collected from sapnhap.bando.com.vn.
   <adm2.geojson>   geoBoundaries VNM ADM2 (OCHA ROAP and the Government of Viet Nam, 2020,
                    CC BY 3.0 IGO): the former district boundaries.
-  <world-atlas>    npm pack world-atlas@2.0.2 (Natural Earth 1:50m, public domain): Cambodia.
   <mapping.csv>    data/ho-chi-minh.csv from github.com/Dorabot-io/sap-nhap-2025 (CC BY 4.0): every
                    old commune, its old district and the new unit it went into, wholly or in part,
                    copied from Resolution 1685/NQ-UBTVQH15.
-Requires Python 3.10+ and shapely 2.1+ with GEOS 3.12+ (pip install shapely).
+  <vietnam63.html> the index.html of the owner's Vietnam 63 app (github.com/JohnBui765/My-country-terrain-1):
+                   the 63 provinces (the same 2020 district boundaries, merged), Hoàng Sa and Trường Sa,
+                   which of the 34 each went into, area and 2021 population (Statistical Yearbook of
+                   Vietnam 2021), the neighbouring countries (Natural Earth, public domain) and the
+                   names of seas, countries and capitals.
+Requires Python 3.10+, numpy, and shapely 2.1+ with GEOS 3.12+ (pip install numpy shapely).
 
 Usage
-  python3 build_data.py <provinces-db> <adm2.geojson> <world-atlas/package> <mapping.csv>
+  python3 build_data.py <provinces-db> <adm2.geojson> <mapping.csv> <vietnam63.html>
 
 What it does
-  1. The 168 shapes are noded into one network of borders and rebuilt from its faces, so that
+  1. Everything is projected with Lambert's azimuthal equal-area projection centred at 16° N,
+     106° E, in units of 10 m: areas are true, and distances true to 0.25% on the mainland
+     (0.6% at the far end of Trường Sa).
+  2. The 168 shapes are noded into one network of borders and rebuilt from its faces, so that
      neighbours share every edge exactly (42 of them did not quite match in the source).
-  2. Which former districts each unit came from is read from the resolution (the mapping). A unit
+  3. Which former districts each unit came from is read from the resolution (the mapping). A unit
      from one district goes to it whole; a unit from two or more is cut along the 2020 district
      lines, between those districts only. The former districts are then the union of their pieces,
      so both levels share one set of borders.
-  3. Everything is simplified together (shapely.coverage_simplify), so shared borders stay shared,
-     and written in the app's own Mercator units of about 10 m.
+  4. The city's units are simplified together (shapely.coverage_simplify), so shared borders stay
+     shared. The provinces around are fitted to the city's outline: gaps go to the neighbour that
+     borders them, or else to the sea. The 63 are grouped into the 34 by Resolution 202/2025/QH15.
+  5. Colours: the provinces take eight jade tones and each former district a family of hues for
+     its wards, chosen so that no two neighbours (the city's units, and the provinces across its
+     edge) are closer than ΔE 0.045 in OKLab, in normal vision and simulated red–green colour
+     blindness, in light and dark mode.
 """
 import json, math, re, sys, glob
 from datetime import date
@@ -48,24 +63,28 @@ ROOT = Path(__file__).resolve().parent
 INDEX = ROOT / 'index.html'
 
 # ---------------------------------------------------------------- projection (same as the app)
-# Mercator; one unit is 10 m along the equator (about 9.8 m at the city's latitude).
-EXT_LON = (105.55, 108.35)
-EXT_LAT = (7.95, 12.35)
-def merc(lat): return 180 / math.pi * math.log(math.tan(math.pi / 4 + lat * math.pi / 360))
-PROJ = {'lon0': EXT_LON[0], 'mtop': merc(EXT_LAT[1]), 's': 11132.0}
-def px(lon): return (lon - PROJ['lon0']) * PROJ['s']
-def py(lat): return (PROJ['mtop'] - merc(lat)) * PROJ['s']
-def P(lon, lat): return [round(px(lon)), round(py(lat))]
-def proj(g): return shapely.transform(g, lambda a: __import__("numpy").column_stack([(a[:, 0] - PROJ["lon0"]) * PROJ["s"], (PROJ["mtop"] - 180 / math.pi * __import__("numpy").log(__import__("numpy").tan(math.pi / 4 + a[:, 1] * math.pi / 360))) * PROJ["s"]]))
-LAT0 = 10.8
-M_PER_UNIT = 10.0 * math.cos(math.radians(LAT0))      # metres per unit near the city
-def lat_of(y):
-    m = PROJ['mtop'] - y / PROJ['s']
-    return (2 * math.atan(math.exp(m * math.pi / 180)) - math.pi / 2) * 180 / math.pi
-def km2(g):
-    """Area in km². A unit is 10 m × cos(latitude) on the ground, so each piece is scaled at its own
-    latitude (Côn Đảo, at 8.7°N, would otherwise come out about 1.3 % small)."""
-    return sum(p.area * (0.01 * math.cos(math.radians(lat_of(p.centroid.y)))) ** 2 for p in polys_of(g))
+# Lambert azimuthal equal-area, centred on Vietnam: every area keeps its true size, and lengths are
+# within 0.21 % of true on the mainland and up to 0.61 % at the far end of Trường Sa (1,400 km from
+# the centre). One unit is 10 m; y grows
+# southward. ORIGIN puts the top-left corner of the drawn window at (0, 0); set by set_window().
+import numpy as np
+LAT0, LON0 = 16.0, 106.0
+RADIUS = 6371008.8 / 10                    # the Earth's mean radius, in units of 10 m
+ORIGIN = [0.0, 0.0]
+M_PER_UNIT = 10.0
+def _laea(lon, lat):
+    p, l, p1 = np.radians(lat), np.radians(np.asarray(lon, dtype=float) - LON0), math.radians(LAT0)
+    k = np.sqrt(2 / (1 + math.sin(p1) * np.sin(p) + math.cos(p1) * np.cos(p) * np.cos(l)))
+    return RADIUS * k * np.cos(p) * np.sin(l), -RADIUS * k * (math.cos(p1) * np.sin(p) - math.sin(p1) * np.cos(p) * np.cos(l))
+def xy(lon, lat):
+    x, y = _laea(lon, lat)
+    return x - ORIGIN[0], y - ORIGIN[1]
+def P(lon, lat):
+    x, y = xy(lon, lat)
+    return [round(float(x)), round(float(y))]
+def proj(g): return shapely.transform(g, lambda a: np.column_stack(xy(a[:, 0], a[:, 1])))
+def km2(g): return g.area * 1e-4          # equal-area: one unit² is 100 m² everywhere
+def imerc(m): return (2 * math.atan(math.exp(m * math.pi / 180)) - math.pi / 2) * 180 / math.pi
 
 # ---------------------------------------------------------------- compact path codec
 # "M x yl dx dy dx dy ... z" with integer units; negative numbers carry their own separator.
@@ -146,9 +165,9 @@ def clean(g):
 # ---------------------------------------------------------------- the former districts
 # Province 0 = the old Hồ Chí Minh City, 1 = Bình Dương, 2 = Bà Rịa – Vũng Tàu.
 PROVINCES = [
-    {'num': 'I', 'vi': 'TP. Hồ Chí Minh (cũ)', 'en': 'Former Hồ Chí Minh City', 'short': 'Old HCMC', 'code': '79'},
-    {'num': 'II', 'vi': 'Tỉnh Bình Dương', 'en': 'Former Bình Dương province', 'short': 'Bình Dương', 'code': '74'},
-    {'num': 'III', 'vi': 'Tỉnh Bà Rịa – Vũng Tàu', 'en': 'Former Bà Rịa – Vũng Tàu province', 'short': 'Bà Rịa – Vũng Tàu', 'code': '77'},
+    {'num': 'I', 'en': 'Former Hồ Chí Minh City', 'short': 'Former HCMC', 'label': 'HỒ CHÍ MINH CITY', 'code': '79'},
+    {'num': 'II', 'en': 'Former Bình Dương Province', 'short': 'Bình Dương', 'label': 'BÌNH DƯƠNG', 'code': '74'},
+    {'num': 'III', 'en': 'Former Bà Rịa – Vũng Tàu Province', 'short': 'Bà Rịa – Vũng Tàu', 'label': 'BÀ RỊA – VŨNG TÀU', 'code': '77'},
 ]
 # id, geoBoundaries names (2020; merged where the units were merged before 2025), name, type, province.
 # Types as on 30 June 2025: quận (urban district), huyện (rural district), thành phố (city).
@@ -179,14 +198,11 @@ DISTRICTS = [
     ('ldat', ['Long Dien', 'Dat Do'], 'Long Đất', 'huyện', 2), ('pmy', ['Tan Thanh'], 'Phú Mỹ', 'thành phố', 2),
     ('cdao', ['Con Dao'], 'Côn Đảo', 'huyện', 2),
 ]
-TYPE_EN = {'quận': 'Urban district', 'huyện': 'Rural district', 'thành phố': 'City',
-           'phường': 'Ward', 'xã': 'Commune', 'đặc khu': 'Special zone'}
-FULL_PREFIX = {'quận': 'Quận ', 'huyện': 'Huyện ', 'thành phố': 'Thành phố '}
 D_NOTES = {
-    'tduc': 'A city within the city from 1 January 2021, formed from Quận 2, Quận 9 and the old Thủ Đức district (Resolution 1111/NQ-UBTVQH14).',
+    'tduc': 'A city within the city from 1 January 2021, formed from District 2, District 9 and the old Thủ Đức District (Resolution 1111/NQ-UBTVQH14).',
     'ldat': 'Formed on 1 January 2025 by merging Long Điền and Đất Đỏ districts (Resolution 1256/NQ-UBTVQH15).',
-    'pmy': 'Tân Thành district until 2018, then the town (thị xã) of Phú Mỹ; the 2025 resolution calls it a city (thành phố).',
-    'cdao': 'The Côn Đảo islands, about 180 km south of Vũng Tàu. Since 1 July 2025 the whole district is one special zone (đặc khu).',
+    'pmy': 'Tân Thành District until 2018, then the town of Phú Mỹ; the 2025 resolution calls it a city.',
+    'cdao': 'The Côn Đảo islands, about 180 km south of Vũng Tàu. Since 1 July 2025 the whole district has been one special zone.',
     'cgio': 'The old city’s only district on the sea, and home of the Cần Giờ mangrove forest.',
 }
 
@@ -408,83 +424,241 @@ def neighbours(items):
             if sum(math.dist(p, q) for p, q in shared) >= 3: nb[a].add(b); nb[b].add(a)
     return nb
 
-def five_colours(codes, nb):
-    order = sorted(codes, key=lambda c: -len(nb[c]))
-    col = {}
-    sys.setrecursionlimit(10000)
-    def go(i):
-        if i == len(order): return True
-        c = order[i]
-        for k in range(5):
-            if all(col.get(n) != k for n in nb[c]):
-                col[c] = k
-                if go(i + 1): return True
-                del col[c]
-        return False
-    assert go(0)
-    return col
-
 def label_point(g):
     poly = max(polys_of(g), key=lambda q: q.area)
     pt = polylabel(poly, tolerance=1.0)
     return [round(pt.x), round(pt.y)], round(2 * poly.boundary.distance(pt), 1)
 
-# ---------------------------------------------------------------- context: neighbours and Cambodia
-NEIGHBOUR_PROVINCES = [
-    ('80', 'Tây Ninh'), ('75', 'Đồng Nai'), ('82', 'Đồng Tháp'), ('68', 'Lâm Đồng'), ('86', 'Vĩnh Long'),
-    ('92', 'Cần Thơ'),
-]
-def load_context(db, world_atlas, city, ext):
-    provs = []
-    for code, name in NEIGHBOUR_PROVINCES:
-        paths = glob.glob(str(Path(db) / f'json/geojson/{code}_*/{code}_*.geojson'))
-        if not paths: print('  (no file for', name, ')'); continue
-        g, _ = load_feature(paths[0])
-        gp = clean(proj(clean(g))).intersection(ext)
-        if gp.is_empty: continue
-        provs.append({'code': code, 'n': name, 'geom': gp})
-    # Natural Earth's Cambodia, trimmed where it overlaps the Vietnamese provinces.
-    T = json.loads((Path(world_atlas) / 'countries-50m.json').read_text())
-    sc, tr = T['transform']['scale'], T['transform']['translate']
-    arcs = []
-    for a in T['arcs']:
-        x = y = 0; pts = []
-        for dx, dy in a:
-            x += dx; y += dy; pts.append((px(x * sc[0] + tr[0]), py(y * sc[1] + tr[1])))
-        arcs.append(pts)
-    def ring(ix):
-        out = []
-        for i in ix:
-            seg = arcs[i] if i >= 0 else arcs[~i][::-1]
-            out.extend(seg if not out else seg[1:])
-        return out
-    kh = next(g for g in T['objects']['countries']['geometries'] if g.get('id') == '116')
-    polys = kh['arcs'] if kh['type'] == 'MultiPolygon' else [kh['arcs']]
-    kh_geom = unary_union([Polygon(ring(p[0]), [ring(h) for h in p[1:]]).buffer(0) for p in polys]).intersection(ext)
-    vn = unary_union([city] + [p['geom'] for p in provs]).buffer(0)
-    kh_geom = kh_geom.difference(vn).buffer(0)
-    # Overlaps between neighbours and the city: the city's own shapes win.
-    for p in provs: p['geom'] = p['geom'].difference(city).buffer(0)
-    # Slivers between shapes from different sources: fill where both sides are close.
-    near = 40      # units ≈ 400 m
-    others = unary_union([p['geom'] for p in provs] + [kh_geom])
-    filler = city.buffer(near).intersection(others.buffer(near)).difference(city).difference(others)
-    filler = unary_union([q for q in polys_of(filler) if q.area < 2e5])
-    land = unary_union([others, filler]).buffer(0)
-    land = land.simplify(3, preserve_topology=True)
-    print(f'context: {len(provs)} provinces + Cambodia; sliver filler {km2(filler):.2f} km²')
-    # Province borders among the neighbours (and with the city, drawn by the city's own outline).
-    pb = unary_union([p['geom'].boundary for p in provs])
-    pb = pb.difference(land.boundary.buffer(8)).difference(city.buffer(8))
-    intl = kh_geom.boundary.difference(land.boundary.buffer(8)).difference(city.buffer(8))
-    pb = pb.difference(intl.buffer(8))
-    return provs, kh_geom, land, pb.simplify(3), intl.simplify(3)
+# ---------------------------------------------------------------- the country: Vietnam 63 and 34
+def load_country(vn63_html):
+    """The owner's Vietnam 63 map: 63 provinces (district boundaries of OCHA ROAP and the Government
+    of Viet Nam, 2020, merged into provinces), Hoàng Sa and Trường Sa at their true positions, the
+    neighbouring countries (Natural Earth), and its names of seas, countries and capitals. All of it
+    is in that app's Mercator units; returned in longitude and latitude."""
+    h = Path(vn63_html).read_text(encoding='utf-8')
+    V = json.loads(re.search(r'<script id="vn-data" type="application/json">(.*?)</script>', h, re.S).group(1))
+    MP = V['meta']['proj']
+    to_ll = lambda r: [(x / MP['s'] + MP['lon0'], imerc(MP['mtop'] - y / MP['s'])) for x, y in r]
+    def geom(d):                                   # even-odd rings, as the apps fill them
+        g = Polygon()
+        for r in parse_rings(d):
+            if len(r) >= 3: g = g.symmetric_difference(Polygon(to_ll(r)).buffer(0))
+        return g.buffer(0)
+    provs = [{**{k: p[k] for k in ('c', 'n', 'to', 'area', 'pop', 'city')}, 'll': geom(p['d'])} for p in V['provinces']]
+    land = [geom(d) for d in V['land']]
+    borders = [LineString(to_ll(r)) for r in parse_rings(V['borders']) if len(r) >= 2]
+    deco = {k: [{'t': it['t'], 'big': bool(it.get('big')), 'll': to_ll([it['at']])[0]} for it in V['deco'].get(k, [])]
+            for k in ('countries', 'water', 'capitals', 'islands')}
+    assert len(provs) == 63 and len({p['to'] for p in provs}) == 34
+    return provs, land, borders, deco
+
+def set_window(provs):
+    """The drawn window: Vietnam with Hoàng Sa and Trường Sa, and ~650 km around (the mist is solid
+    farther out). Fixes ORIGIN so that the window starts at (0, 0)."""
+    ORIGIN[0] = ORIGIN[1] = 0.0
+    x0, y0, x1, y1 = proj(unary_union([p['ll'] for p in provs])).bounds
+    m = 65000
+    ORIGIN[0], ORIGIN[1] = x0 - m, y0 - m
+    return box(0, 0, x1 - x0 + 2 * m, y1 - y0 + 2 * m)
+
+def fit_country(provs, city, old_geoms):
+    """Hồ Chí Minh City's own outline (30 m) replaces the coarse one (0.7 km) of the three provinces it
+    was made from. Neighbours give up what overlaps it and take in the gaps up to it; a gap that
+    touches no neighbour is sea."""
+    old = set(old_geoms)
+    coarse3 = unary_union([p['geom'] for p in provs if p['c'] in old]).buffer(0)
+    near = [p for p in provs if p['c'] not in old and p['geom'].distance(city) < 3000]
+    for p in near: p['geom'] = p['geom'].difference(city).buffer(0)
+    others = unary_union([p['geom'] for p in provs if p['c'] not in old])
+    gap = coarse3.difference(city).difference(others).buffer(0)
+    given = sea = 0.0
+    for q in polys_of(gap):
+        best, bl = None, 0
+        for p in near:
+            l = q.buffer(1).intersection(p['geom'].boundary).length
+            if l > bl: best, bl = p, l
+        if best is not None and bl > 50:           # at least 500 m of border with that neighbour
+            best['geom'] = unary_union([best['geom'], q]).buffer(0); given += km2(q)
+        else: sea += km2(q)
+    for p in provs:
+        if p['c'] in old: p['geom'] = old_geoms[p['c']]
+    print(f'country: HCMC fitted in; {given:.1f} km² of gap given to {len(near)} neighbouring provinces, {sea:.1f} km² left as sea')
+
+# English, with Vietnamese names: the type follows the name ("Đồng Nai Province", "Bàn Cờ Ward"), as in
+# the English the Vietnamese government uses; numbered units put it first ("District 1", "Ward 5").
+def english_old_unit(full):
+    m = re.match(r'^(Phường|Xã|Thị trấn|Huyện|Quận|Thành phố|Thị xã) (.+)$', full)
+    if not m: return full
+    kind, name = m.groups()
+    word = {'Phường': 'Ward', 'Xã': 'Commune', 'Thị trấn': 'Township', 'Huyện': 'District', 'Quận': 'District',
+            'Thành phố': 'City', 'Thị xã': 'Town'}[kind]
+    return f'{word} {name}' if name.isdigit() else f'{name} {word}'
+
+PROVINCE_NOTES = {
+    '46': 'Thừa Thiên Huế Province until 31 December 2024; a centrally run city from 1 January 2025 (Resolution 175/2024/QH15).',
+    '01': 'The capital. Took in Hà Tây Province, Mê Linh District and four communes of Lương Sơn in 2008 (Resolution 15/2008/QH12).',
+}
+P34_NOTES = {
+    # Dates as the database's release table gives them ("effect from").
+    '22': 'A centrally run city since 1 September 2026 (Resolution 36/2026/QH16), as listed in the Vietnamese Provinces Database 5.2.0.',
+    '24': 'A centrally run city since 20 September 2026 (Resolution 39/2026/QH16), as listed in the Vietnamese Provinces Database 5.2.0.',
+    '75': 'A centrally run city since 30 April 2026 (Resolution 30/2026/QH16), as listed in the Vietnamese Provinces Database 5.2.0.',
+}
+
+def group34(provs, db):
+    """The 34 provinces and cities of 1 July 2025 (Resolution 202/2025/QH15) are whole old provinces
+    joined; their areas and present status come from the Vietnamese Provinces Database 5.2.0."""
+    import unicodedata
+    bare = lambda s: ''.join(ch for ch in unicodedata.normalize('NFD', s.lower()) if unicodedata.category(ch) != 'Mn').replace('đ', 'd')
+    full = json.load(open(Path(db) / 'json/full_json_generated_data_vn_units.json', encoding='utf-8'))
+    by_name = {bare(x['Name']): x for x in full}
+    area = {}
+    for f in glob.glob(str(Path(db) / 'json/geojson/*/*.geojson')):
+        if '/wards/' in f: continue
+        g, pr = load_feature(f); area[pr['code']] = pr['areaKm2']
+    groups = {}
+    for p in provs:
+        name = re.sub(r' (province|city|City)$', '', p['to'])
+        x = by_name[bare(name)]
+        p['g'] = x['Code']
+        groups.setdefault(x['Code'], {'c': x['Code'], 'n': name, 'kind': 'city' if x['AdministrativeUnitShortName'] == 'Thành phố' else 'province',
+                                      'area': area[x['Code']], 'members': []})['members'].append(p['c'])
+    assert len(groups) == 34 and abs(sum(g['area'] for g in groups.values()) - 331325.62) < 1, sum(g['area'] for g in groups.values())
+    return groups
+
+# ---------------------------------------------------------------- colours, checked as in the jade range
+# ΔE is the distance in OKLab; 0.045 is the floor for any two units that touch, in normal vision and
+# in protan and deutan colour-blind vision (Machado et al. 2009, severity 1).
+JADE = {'light': ['#c8ead0', '#afe1df', '#b4d9bc', '#9bd0cd', '#a2c7aa', '#89bebc', '#91b699', '#7aadaa'],
+        'dark': ['#53725b', '#3d6a68', '#416149', '#295957', '#315039', '#1a4846', '#22402a', '#093837']}
+DE_MIN = 0.045
+CVD = {'protan': [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]],
+       'deutan': [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.011820, 0.042940, 0.968881]]}
+def _lin(c): c /= 255; return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+def _srgb(c): c = min(1, max(0, c)); return round(255 * (12.92 * c if c <= 0.0031308 else 1.055 * c ** (1 / 2.4) - 0.055))
+def _oklab(r, g, b):
+    l = (0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b) ** (1 / 3)
+    m = (0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b) ** (1 / 3)
+    s = (0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b) ** (1 / 3)
+    return (0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s, 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+            0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s)
+def lab_of(hexc, vision='normal'):
+    r, g, b = (_lin(int(hexc[i:i + 2], 16)) for i in (1, 3, 5))
+    if vision != 'normal':
+        M = CVD[vision]; r, g, b = (max(0.0, M[i][0] * r + M[i][1] * g + M[i][2] * b) for i in range(3))
+    return _oklab(r, g, b)
+def dE(a, b, vision='normal'): return math.dist(lab_of(a, vision), lab_of(b, vision))
+def dE_all(a, b): return min(dE(a, b, v) for v in ('normal', 'protan', 'deutan'))
+def oklch(L, C, h):
+    a, b = C * math.cos(math.radians(h)), C * math.sin(math.radians(h))
+    l, m, s = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3, (L - 0.1055613458 * a - 0.0638541728 * b) ** 3, (L - 0.0894841775 * a - 1.2914855480 * b) ** 3
+    rgb = (4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+           -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s)
+    return '#' + ''.join(f'{_srgb(c):02x}' for c in rgb)
+
+def jade_tones(codes, nb):
+    """One of the eight jade tones per province, so that neighbours look as different as the tones
+    allow (normal and colour-blind, both themes), spreading the tones' use."""
+    pair = [[min(dE_all(JADE[th][a], JADE[th][b]) for th in JADE) if a != b else 0 for b in range(8)] for a in range(8)]
+    use = [0] * 8; tone = {}
+    for c in sorted(codes, key=lambda c: -len(nb[c])):
+        near = [tone[n] for n in nb[c] if n in tone]
+        t = max(range(8), key=lambda k: (min([pair[k][n] for n in near] or [1]), -use[k]))
+        tone[c] = t; use[t] += 1
+    low = min([pair[tone[a]][tone[b]] for a in tone for b in nb[a] if b in tone] or [1])
+    return tone, low
+
+THEMES = {'light': {'L': [0.86, 0.79, 0.92, 0.74, 0.95], 'C': 0.075}, 'dark': {'L': [0.50, 0.59, 0.42, 0.66, 0.37], 'C': 0.09}}
+HUES = list(range(0, 360, 20))                     # eighteen hues to choose from
+def option_colour(h, s, th): return oklch(THEMES[th]['L'][s], THEMES[th]['C'] * (0.85 if s >= 3 else 1), h + (7 if s % 2 else -7))
+_LAB = {}
+def _labs(hexc):
+    if hexc not in _LAB: _LAB[hexc] = [lab_of(hexc, v) for v in ('normal', 'protan', 'deutan')]
+    return _LAB[hexc]
+def _de(a, b): return min(math.dist(x, y) for x, y in zip(_labs(a), _labs(b)))
+OPTS = [(h, s) for h in HUES for s in range(5)]
+def _tables(tones_light, tones_dark):
+    """ΔE between every pair of options, and between every option and every jade tone: the smaller of
+    the two themes and of the three kinds of vision."""
+    T = {(a, b): min(_de(option_colour(*a, th), option_colour(*b, th)) for th in THEMES) for a in OPTS for b in OPTS}
+    E = {(a, t): min(_de(option_colour(*a, 'light'), JADE['light'][t]), _de(option_colour(*a, 'dark'), JADE['dark'][t])) for a in OPTS for t in range(8)}
+    return T, E
+
+def city_colours(items, group_of, edges, families):
+    """items: the city's units (dicts with c, nb). With families, the units of one former district share
+    its hue and differ in shade; without, each unit has its own hue and shade. edges: code → jade tones
+    of the provinces it touches. Maximises the smallest ΔE over all touching pairs (then the number of
+    pairs under 0.045), by repeatedly improving the worst pair."""
+    import random
+    rnd = random.Random(7)
+    T, E = _tables(None, None)
+    by = {u['c']: u for u in items}
+    pairs = sorted({tuple(sorted((u['c'], c))) for u in items for c in u['nb']})
+    hue = {}; shade = {}
+    G = sorted({group_of(u) for u in items})
+    gnb = {g: set() for g in G}
+    for a, b in pairs:
+        if group_of(by[a]) != group_of(by[b]): gnb[group_of(by[a])].add(group_of(by[b])); gnb[group_of(by[b])].add(group_of(by[a]))
+    for g in sorted(G, key=lambda g: -len(gnb[g])):          # first guess: neighbouring families far apart
+        near = [hue[n] for n in gnb[g] if n in hue]
+        hue[g] = max(HUES, key=lambda h: (min([T[((h, 0), (n, 0))] for n in near] or [1]), -sum(1 for v in hue.values() if v == h)))
+    for u in sorted(items, key=lambda u: -len(u['nb'])):
+        same = {shade[c] for c in u['nb'] if c in shade and group_of(by[c]) == group_of(u)}
+        shade[u['c']] = next(s for s in range(5) if s not in same)
+    opt = lambda c: (hue[group_of(by[c])], shade[c])
+    def score():
+        vals = [T[(opt(a), opt(b))] for a, b in pairs] + [E[(opt(c), t)] for c in edges for t in edges[c]]
+        return (min(vals), -sum(v < DE_MIN for v in vals), -sum(max(0, DE_MIN - v) for v in vals))
+    def worst():
+        w = [(T[(opt(a), opt(b))], a, b) for a, b in pairs] + [(E[(opt(c), t)], c, None) for c in edges for t in edges[c]]
+        return sorted(w)[:6]
+    def climb(best):
+        for it in range(400):
+            moved = False
+            for _, a, b in worst():
+                cands = []
+                for c in (a, b):
+                    if c is None: continue
+                    g = group_of(by[c])
+                    same = {shade[n] for n in by[c]['nb'] if group_of(by[n]) == g}
+                    cands += [('s', c, s) for s in range(5) if s != shade[c] and s not in same]
+                    cands += [('h', g, h) for h in HUES if h != hue[g]]
+                rnd.shuffle(cands)
+                for kind, key, val in cands:
+                    old = (shade if kind == 's' else hue)[key]
+                    (shade if kind == 's' else hue)[key] = val
+                    sc = score()
+                    if sc > best: best = sc; moved = True; break
+                    (shade if kind == 's' else hue)[key] = old
+                if moved: break
+            if not moved: return best
+        return best
+    best = climb(score())
+    # When stuck, shake: give a few families near the worst pair a random hue, climb again, and keep
+    # the result only if it is better.
+    for kick in range(60):
+        if best[0] >= DE_MIN + 0.006: break
+        saved = (dict(hue), dict(shade))
+        _, a, b = worst()[0]
+        for g in rnd.sample(sorted({group_of(by[a])} | gnb[group_of(by[a])]), k=min(2, 1 + len(gnb[group_of(by[a])]))):
+            hue[g] = rnd.choice(HUES)
+        trial = climb(score())
+        if trial > best: best = trial
+        else: hue, shade = saved
+    for u in items:
+        u['cl'], u['cd'] = option_colour(*opt(u['c']), 'light'), option_colour(*opt(u['c']), 'dark')
+    return best, len(set(hue.values()))
 
 # ---------------------------------------------------------------- main
-def main(db, adm2, world_atlas, mapping):
+def main(db, adm2, mapping, vn63):
+    # The country first: it fixes the drawn window, and with it the origin of every coordinate.
+    provs, land_ll, borders_ll, deco_ll = load_country(vn63)
+    ext = set_window(provs)
+    for p in provs: p['geom'] = clean(proj(p['ll']))
+    print(f'window: {ext.bounds[2] / 100:.0f} km × {ext.bounds[3] / 100:.0f} km')
+
     units = load_units(db)
     load_mapping(mapping, units)
-    ext = box(px(EXT_LON[0]), py(EXT_LAT[1]), px(EXT_LON[1]), py(EXT_LAT[0]))
     city0 = unary_union([u['geom'] for u in units]).buffer(0)
     dists = load_districts(adm2, city0)
     print(f'former districts: {len(dists)}')
@@ -533,7 +707,6 @@ def main(db, adm2, world_atlas, mapping):
         by_unit.setdefault(ui, []).append(g); by_dist.setdefault(di, []).append(g)
     for ui, u in enumerate(units):
         u['final'] = unary_union(by_unit[ui]).buffer(0)
-        # Share of the unit in each former district, from the pieces actually drawn.
         parts = [(km2(g), di) for (uj, di), g in zip(keys, simp) if uj == ui]
         tot = sum(a for a, _ in parts)
         u['parts'] = sorted(((a / tot, di) for a, di in parts), reverse=True)
@@ -541,12 +714,9 @@ def main(db, adm2, world_atlas, mapping):
     for di, d in enumerate(dists):
         d['final'] = unary_union(by_dist.get(di, [])).buffer(0)
         d['area'] = km2(d['final'])
-        gba = km2(d['gb'].intersection(city0))
-        d['dev'] = d['area'] / gba - 1
+        d['dev'] = d['area'] / km2(d['gb'].intersection(city0)) - 1
     city = unary_union([u['final'] for u in units]).buffer(0)
 
-    # Report the cut units. A district the unit took only a sliver from may get no piece at all
-    # (the 2020 lines do not show it); the unit's card still names it.
     name_of = {i: d['n'] for i, d in enumerate(dists)}
     for u in units:
         drawn = [di for _, di in u['parts']]
@@ -563,45 +733,45 @@ def main(db, adm2, world_atlas, mapping):
     uorder = sorted(range(len(units)), key=lambda i: (dists[units[i]['dist']]['stt'], units[i]['code']))
     for n, ui in enumerate(uorder, 1): units[ui]['stt'] = n
 
-    # Côn Đảo lies far out at sea; the home view frames the mainland.
     cd = next(u for u in units if u['type'] == 'đặc khu')
     mainland = city.difference(cd['final'].buffer(100))
     to_box = lambda b: [round(b[0]), round(b[1]), round(b[2] - b[0]), round(b[3] - b[1])]
 
-    # 3. Encode both levels.
+    # 3. Encode both levels, with English names: Vietnamese name, English type.
     def facts(g):
         d = encode(rings_of(g))
         rings = parse_rings(d)
         main = max(rings, key=ring_area)
         lab, sz = label_point(g)
         return {'d': d, 'box': bbox(main), 'lab': lab, 'sz': sz}
+    WORD = {'phường': 'Ward', 'xã': 'Commune', 'đặc khu': 'Special Zone'}
     W = []
     for ui in uorder:
         u = units[ui]
-        W.append({'c': u['code'], 'n': u['name'], 'full': u['full'], 'type': u['type'], 'stt': u['stt'],
+        W.append({'c': u['code'], 'n': u['name'], 'full': f"{u['name']} {WORD[u['type']]}", 'vi': u['full'], 'type': u['type'], 'stt': u['stt'],
                   'r': dists[u['dist']]['stt'] - 1, 'area': u['areaOfficial'], 'areaMap': round(km2(u['final']), 2),
                   'parts': [[dists[di]['id'], max(1, round(s * 100))] for s, di in u['parts']] + [[dists[i]['id'], 0] for i in u['minor']],
-                  'src': u['src'], **facts(u['final'])})
+                  'src': [[english_old_unit(old), did, part] for old, did, part in u['src']], **facts(u['final'])})
+    def d_names(d):
+        if d['n'].startswith('Quận '): return d['n'].replace('Quận', 'District'), d['n'].replace('Quận', 'District'), d['n']
+        en = {'quận': 'District', 'huyện': 'District', 'thành phố': 'City'}[d['type']]
+        vi = {'quận': 'Quận', 'huyện': 'Huyện', 'thành phố': 'Thành phố'}[d['type']]
+        return d['n'], f"{d['n']} {en}", f"{vi} {d['n']}"
     Dl = []
     for di in dorder:
         d = dists[di]
         share = lambda u: next((s for s, dj in u['parts'] if dj == di), 0)
         wards = sorted((u['stt'], u['code'], share(u)) for u in units if di in u['allowed'])
-        Dl.append({'c': d['id'], 'n': d['n'], 'full': FULL_PREFIX[d['type']] + d['n'] if not d['n'].startswith('Quận') else d['n'],
-                   'type': d['type'], 'stt': d['stt'], 'r': d['prov'], 'area': round(d['area'], 1),
+        n, full, vi = d_names(d)
+        Dl.append({'c': d['id'], 'n': n, 'full': full, 'vi': vi, 'type': d['type'], 'stt': d['stt'], 'r': d['prov'], 'area': round(d['area'], 1),
                    'wards': [[c, max(1, round(s * 100)) if s else 0] for _, c, s in wards], 'note': D_NOTES.get(d['id'], ''),
                    **facts(d['final'])})
-    # Côn Đảo is ~180 km out at sea: group views and the home view leave it out.
     for it in W + Dl:
         if it['c'] in (cd['code'], 'cdao'): it['far'] = True
     for level in (W, Dl):
         nb = neighbours(level)
-        col = five_colours([it['c'] for it in level], nb)
         by = {it['c']: it for it in level}
-        for it in level:
-            it['nb'] = sorted(nb[it['c']], key=lambda c: by[c]['stt'])
-            it['col'] = col[it['c']]
-    # Typed answers must not be ambiguous within a level.
+        for it in level: it['nb'] = sorted(nb[it['c']], key=lambda c: by[c]['stt'])
     def norm(s):
         import unicodedata
         s = s.lower().replace('đ', 'd')
@@ -623,51 +793,111 @@ def main(db, adm2, world_atlas, mapping):
         items = [it for it in W if it['r'] == d['stt'] - 1]
         far = [it for it in items if not it.get('far')] or items
         lab, sz = label_point(unary_union([units[ui]['final'] for ui in range(len(units)) if units[ui]['dist'] == di]))
-        wgroups.append({'id': d['id'], 'num': str(d['stt']), 'n': d['n'], 'type': d['type'], 'prov': d['prov'],
+        wgroups.append({'id': d['id'], 'num': str(d['stt']), 'n': Dl[di]['n'], 'type': d['type'], 'prov': d['prov'],
                         'bbox': group_box(far), 'lab': lab, 'sz': sz})
-    dgroups = []
+    dgroups, old_geoms = [], {}
     for pi, pr in enumerate(PROVINCES):
         items = [it for it in Dl if it['r'] == pi]
         geom = unary_union([dists[di]['final'] for di in range(len(dists)) if dists[di]['prov'] == pi]).buffer(0)
+        old_geoms[pr['code']] = geom
         far = [it for it in items if not it.get('far')] or items
         lab, sz = label_point(geom.difference(cd['final'].buffer(100)) if pi == 2 else geom)
         dgroups.append({**pr, 'bbox': group_box(far), 'area': round(km2(geom), 1), 'lab': lab, 'sz': sz})
 
-    # 4. Context.
-    provs, kh, land, pb, intl = load_context(db, world_atlas, city, ext)
-    land_polys = [encode(rings_of(q)) for q in polys_of(land) if q.area > 50]
-    water = lambda lon, lat: not land.contains(Point(px(lon), py(lat))) and not city.contains(Point(px(lon), py(lat)))
-    # Names of the neighbours, placed within ~26 km of the city: farther out the mist is solid and a
-    # label would never show (Cần Thơ and Cambodia lie beyond it).
-    labels = []
-    reach = city.buffer(2600)
-    for name, g in [(p['n'].upper(), p['geom']) for p in provs] + [('CAMBODIA', kh)]:
-        near = g.intersection(reach)
-        if near.area > 4e5: labels.append({'t': name, 'at': label_point(near)[0]})
-        else: print(f'  no label for {name}: nothing of it within 26 km of the city')
-    # (name, lon, lat, big, zoom from which it shows: the bay is narrow)
-    seas = [('East Sea', 107.0, 10.12, True, 0), ('Gành Rái Bay', 107.02, 10.43, False, 0.09)]
-    for t, lon, lat, big, mk in seas:
-        assert water(lon, lat), t
-    deco = {
-        'labels': labels,
-        'water': [{'t': t, 'at': P(lon, lat), 'big': big, 'minK': mk} for t, lon, lat, big, mk in seas],
-        # Every quarter degree; the app thins it to every degree when zoomed far out.
-        'grid': {'lon': [x / 4 for x in range(math.ceil(EXT_LON[0] * 4), math.floor(EXT_LON[1] * 4) + 1)],
-                 'lat': [x / 4 for x in range(math.ceil(EXT_LAT[0] * 4), math.floor(EXT_LAT[1] * 4) + 1)]},
-    }
+    # 4. The country: 63 provinces (until 30 June 2025) and the 34 they became (from 1 July 2025).
+    fit_country(provs, city, old_geoms)
+    g34 = group34(provs, db)
+    NAME63 = {'79': 'Hồ Chí Minh', '77': 'Bà Rịa – Vũng Tàu', '46': 'Huế'}
+    CAPITAL, CITY63 = '01', {'31', '48', '92', '79', '46'}
+    P63 = []
+    for p in provs:
+        n = NAME63.get(p['c'], p['n'])
+        kind = 'capital' if p['c'] == CAPITAL else 'city' if p['c'] in CITY63 else 'province'
+        full = n if kind == 'capital' else f"{n} {'City' if kind == 'city' else 'Province'}"
+        # The three provinces that became the city are drawn by its own units; their outline here is
+        # only for taps and names, so it is kept coarse (200 m).
+        g = p['geom'].simplify(20, preserve_topology=True) if p['c'] in old_geoms else p['geom']
+        P63.append({'c': p['c'], 'n': n, 'full': full, 'kind': kind, 'area': p['area'], 'pop': p['pop'], 'g': p['g'],
+                    'hcmc': p['c'] in old_geoms, 'note': PROVINCE_NOTES.get(p['c'], ''), **facts(g)})
+    # Neighbours from the full shapes: the three that became the city are kept coarse above, and
+    # coarse edges no longer coincide with their neighbours' edges.
+    nb63 = neighbours([{'c': p['c'], 'd': encode(rings_of(q['geom']))} if p['hcmc'] else p for p, q in zip(P63, provs)])
+    for p in P63: p['nb'] = sorted(nb63[p['c']])
+    P34 = []
+    for code, g in sorted(g34.items()):
+        geom = unary_union([p['geom'] for p in provs if p['g'] == code]).buffer(0)
+        kind = 'capital' if code == '01' else g['kind']
+        full = g['n'] if kind == 'capital' else f"{g['n']} {'City' if kind == 'city' else 'Province'}"
+        lab, sz = label_point(geom)
+        main = max(polys_of(geom), key=lambda q: q.area)
+        P34.append({'c': code, 'n': g['n'], 'full': full, 'kind': kind, 'area': g['area'], 'members': sorted(g['members']),
+                    'hcmc': code == '79', 'note': P34_NOTES.get(code, ''), 'lab': lab, 'sz': sz, 'box': to_box(main.bounds)})
+    by63 = {p['c']: p for p in P63}
+    for q in P34:
+        q['nb'] = sorted({by63[n]['g'] for m in q['members'] for n in by63[m]['nb']} - {q['c']})
+    t63, l63 = jade_tones([p['c'] for p in P63 if not p['hcmc']], {p['c']: [n for n in p['nb'] if not by63[n]['hcmc']] for p in P63})
+    for p in P63: p['tone'] = t63.get(p['c'], -1)
+    b34 = {q['c']: q for q in P34}
+    t34, l34 = jade_tones([q['c'] for q in P34 if not q['hcmc']], {q['c']: [n for n in q['nb'] if not b34[n]['hcmc']] for q in P34})
+    for q in P34: q['tone'] = t34.get(q['c'], -1)
+    print(f'colours, provinces: closest neighbouring provinces ΔE {l63:.3f} (63) and {l34:.3f} (34), normal and colour-blind')
 
+    # Colours of the city's units, now that the provinces across its edge have theirs: one hue family
+    # per former district for the wards, a colour per former district for the districts.
+    def touching(level, tone_of):
+        segs = {u['c']: segments(parse_rings(u['d'])) for u in level}
+        out = {}
+        for p in P63:
+            if p['hcmc']: continue
+            sp = segments(parse_rings(p['d']))
+            for u in level:
+                if segs[u['c']] & sp: out.setdefault(u['c'], set()).add(tone_of(p))
+        return out
+    sw, fw = city_colours(W, lambda u: u['r'], touching(W, lambda p: b34[p['g']]['tone']), True)
+    sd, fd2 = city_colours(Dl, lambda d: d['c'], touching(Dl, lambda p: p['tone']), False)
+    print(f'colours, wards: {fw} hue families; closest touching pair ΔE {sw[0]:.3f}, {-sw[1]} pairs under {DE_MIN} (normal and colour-blind, both themes, provinces across the edge included)')
+    print(f'colours, districts: closest touching pair ΔE {sd[0]:.3f}, {-sd[1]} pairs under {DE_MIN}')
+    hl = min(_de(u[k], '#ffd43b') for u in W + Dl for k in ('cl', 'cd'))
+    print(f'colours: the yellow of a selected unit is at least ΔE {hl:.3f} from every fill')
+    # Around Vietnam: neighbouring countries and their borders, inside the window.
+    land = clean(proj(unary_union(land_ll))).intersection(ext)
+    land_polys = [encode(rings_of(q)) for q in polys_of(land) if q.area > 2e4]
+    bl = [proj(b).intersection(ext) for b in borders_ll]
+    borders = [l for g in bl for l in lines_of(g)]
+    # Names: seas, countries and capitals from Vietnam 63, kept if inside the window; the two
+    # archipelagos; and the bay off Vũng Tàu, once zoomed in.
+    inside = lambda pt: 0 < pt[0] < ext.bounds[2] and 0 < pt[1] < ext.bounds[3]
+    pick = lambda items: [{'t': it['t'], 'at': P(*it['ll']), 'big': it['big']} for it in items if inside(P(*it['ll']))]
+    def arch(code, lon_min, lat_max):
+        g = next(p['geom'] for p in provs if p['c'] == code)
+        isl = unary_union([q for q in polys_of(g) if q.representative_point().x > xy(lon_min, 12)[0] and q.representative_point().y > xy(108, lat_max)[1]])
+        return to_box(isl.bounds)
+    deco = {
+        'countries': pick(deco_ll['countries']), 'water': pick(deco_ll['water']) + [{'t': 'Gành Rái Bay', 'at': P(107.02, 10.43), 'big': False, 'minK': 0.09}],
+        'capitals': pick(deco_ll['capitals']), 'islands': pick(deco_ll['islands']),
+        'archipelagos': [{'t': 'Hoàng Sa Archipelago', 'of': 'Đà Nẵng', 'box': arch('48', 110.5, 18)},
+                         {'t': 'Trường Sa Archipelago', 'of': 'Khánh Hòa', 'box': arch('56', 110.5, 13)}],
+        'grid': {'lon': list(range(96, 126)), 'lat': list(range(0, 31)), 'tropic': 23.4367},
+    }
+    for w in deco['water']:
+        assert not city.contains(Point(w['at'])), w['t']
+    vn_main = unary_union([p['geom'] for p in provs if p['c'] not in ('48', '56')] + [p['geom'].intersection(box(0, 0, xy(110, 12)[0], ext.bounds[3])) for p in provs if p['c'] in ('48', '56')])
+    region = city.difference(cd['final'].buffer(100)).buffer(9000)
     out = {
         'meta': {
-            'proj': PROJ, 'extent': to_box(ext.bounds), 'mainland_bbox': to_box(mainland.bounds),
-            'territory_bbox': to_box(city.bounds), 'cd_box': W[[it['c'] for it in W].index(cd['code'])]['box'],
-            'm_per_unit': round(M_PER_UNIT, 3), 'built': date.today().isoformat(),
-            'area_official': round(sum(u['areaOfficial'] for u in units), 2), 'area_map': round(km2(city), 1),
+            'proj': {'lat0': LAT0, 'lon0': LON0, 'R': RADIUS, 'ox': ORIGIN[0], 'oy': ORIGIN[1]}, 'm_per_unit': M_PER_UNIT,
+            'extent': to_box(ext.bounds), 'mainland_bbox': to_box(mainland.bounds), 'territory_bbox': to_box(city.bounds),
+            'cd_box': W[[it['c'] for it in W].index(cd['code'])]['box'], 'region_bbox': to_box(region.bounds),
+            'country_bbox': to_box(vn_main.bounds), 'vn_bbox': to_box(unary_union([p['geom'] for p in provs]).bounds),
+            'built': date.today().isoformat(), 'area_official': round(sum(u['areaOfficial'] for u in units), 2),
+            'area_city': 6772.59, 'area_vietnam': round(sum(g['area'] for g in g34.values()), 2), 'area_map': round(km2(city), 1),
+            'jade': JADE,
         },
         'outline': encode(rings_of(city)),
         'w': {'units': W, 'groups': wgroups},
         'd': {'units': Dl, 'groups': dgroups},
-        'land': land_polys, 'pborders': encode_lines(lines_of(pb)), 'iborders': encode_lines(lines_of(intl)),
+        'p63': P63, 'p34': P34,
+        'land': land_polys, 'borders': encode_lines(borders),
         'deco': deco,
     }
     blob = json.dumps(out, ensure_ascii=False, separators=(',', ':'))
@@ -676,9 +906,9 @@ def main(db, adm2, world_atlas, mapping):
                      lambda m: m.group(1) + blob + m.group(2), html, count=1, flags=re.S)
     assert n == 1
     INDEX.write_text(new, encoding='utf-8')
-    print(f'wrote {len(blob):,} bytes: units {sum(len(u["d"]) for u in W):,}, districts {sum(len(d["d"]) for d in Dl):,}, '
-          f'land {sum(map(len, land_polys)):,}')
-    print(f'area: official {out["meta"]["area_official"]} km², on the map {out["meta"]["area_map"]} km²')
+    print(f'wrote {len(blob):,} bytes: wards {sum(len(u["d"]) for u in W):,}, districts {sum(len(d["d"]) for d in Dl):,}, '
+          f'provinces {sum(len(p["d"]) for p in P63):,}, land {sum(map(len, land_polys)):,}, borders {len(out["borders"]):,}')
+    print(f'area: wards listed {out["meta"]["area_official"]} km², city on the map {out["meta"]["area_map"]} km², Vietnam {out["meta"]["area_vietnam"]} km²')
 
 if __name__ == '__main__':
     if len(sys.argv) != 5: sys.exit(__doc__)
