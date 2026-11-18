@@ -1,0 +1,31 @@
+{
+  "id": "/HCMC-MAP/",
+  "name": "HCMC Map",
+  "short_name": "HCMC Map",
+  "description": "Learn Hồ Chí Minh City's 168 wards and communes of 1 July 2025, and the 38 districts they replaced, on a map made for your fingers.",
+  "lang": "en",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#cfe6f0",
+  "theme_color": "#cfe6f0",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
