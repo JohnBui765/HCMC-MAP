@@ -16,24 +16,31 @@ Address: **https://johnbui765.github.io/HCMC-MAP/**
 - **True sizes.** The map uses Lambert's azimuthal equal-area projection, centred on Vietnam: every
   ward, district, the city and every province keeps its true area, and distances are true to 0.25%
   on the mainland (0.6% at the far end of Trường Sa).
-- **Smooth zoom from the country to a ward.** Every jump (a chip, a card, the ⤢ button, the ladder)
-  is one continuous flight that zooms out, across and back in, so you never lose your place. A
-  mouse wheel glides; pinch, double-tap and two-finger tap work as before. The lines between wards
-  fade out as you zoom away and the former district lines follow; from far out the city is one name.
-- **Scale tools.**
-  - A **scale bar** at the bottom right, with the name of the step you are at.
-  - Tap it for the **zoom ladder**: Vietnam, Region, City, District, Ward, for what you have picked
-    (or what is in the middle of the screen), each with its area and its share of the step above
-    (for example, *District 1 · 7.80 km² · 1/870 of the city's area*). Tap a step to fly there.
-  - Each card has a **Size** row: squares drawn to scale, each inside the next bigger unit.
+- **Zoom with two fingers.** On a phone or tablet, pinch to zoom; a tap only ever picks, at once
+  (no double-tap or two-finger-tap zoom). If a tap could mean several tiny wards, the app asks you to
+  pinch in rather than guess. On a laptop, use the mouse wheel (it glides) or the + and − buttons.
+- **Smooth flights.** Every jump (a chip, a card, the ⤢ button) is one continuous flight that zooms
+  out, across and back in, so you never lose your place. The seams between wards fade as you zoom
+  away, then the former district lines; from far out the city is one name.
+- **Sizes and bearings.**
+  - Each card has a **Size** row: squares drawn to scale, each inside the next bigger unit (for
+    example, *District 1: 1/870 of the city's area*).
   - A unit too small to see at the present zoom is ringed.
+  - A tiny **compass** at the top right points to true north (on this projection north leans away
+    from straight up by at most 1.4° on the mainland and 2.5° at the far end of Trường Sa, and the
+    needle follows it).
+- **Clean view.** The eye button at the bottom right (or H on a keyboard) hides the controls: the top
+  card, the chips, the zoom and ⤢ buttons and the tab bar. The map, its taps and its cards keep working, and
+  a practice question stays on screen. Tap the eye again to bring the controls back.
+- **Mist like Map Learning's.** Drawn by the graphics chip over the whole screen: clear over Vietnam
+  and its nearby seas, covering everything beyond, at every zoom and with no edges.
 - **Grouped the way you already know the city.** Wards are grouped and numbered by their former
-  district (District 1 first, Côn Đảo last). Each former district has its own family of colours and
-  its wards are shades of it; the borders between groups are bold lines edged in the paper colour
-  (dark on a pale edging, or light on a dark one in dark mode). Tap a chip
-  to fly to a group: the rest of the city dims and only that group is named. 12 wards straddle two
+  district (District 1 first, Côn Đảo last). Each former district has a hue at least 40° around the
+  colour wheel from its neighbours', and its wards are shades of it, separated by soft white seams;
+  the borders between groups are slate lines. Tap a chip to fly to a group: the rest of the city turns grey and only that group is named.
+  At the Districts level, picking a district greys out the rest the same way. 12 wards straddle two
   former districts; each is grouped with the one holding most of it, and the true old border is
-  drawn dashed where it differs (84 km in all). Districts are grouped by former province.
+  drawn dotted where it differs (85 km in all). Districts are grouped by former province.
 - **The provinces around** are in eight jade tones. In Learn, tap one for its card: area, what it
   was formed from or became, population (63 provinces, 2021), its size next to the city, and its
   neighbours.
@@ -72,7 +79,7 @@ exactly as above.
 - **Laptop:** open the link in Chrome or Edge and click the install icon in the address bar.
 
 After the first visit it works without internet. A phone that has an older version installed picks
-up this one the next time the app is opened online (the cache is now `hcmc-map-v3`); progress is
+up this one the next time the app is opened online (the cache is now `hcmc-map-v4`); progress is
 kept.
 
 ## Your progress
@@ -83,7 +90,7 @@ device. "Reset this level" erases only the level on show.
 
 ## After editing any file
 
-Change `VERSION` at the top of `sw.js` (for example to `PREFIX + 'v4'`). Otherwise installed
+Change `VERSION` at the top of `sw.js` (for example to `PREFIX + 'v5'`). Otherwise installed
 copies keep showing the cached version.
 
 ## Rebuilding the map data
@@ -112,12 +119,16 @@ What it does, in short:
    so both levels share one set of borders. 17 wards came from two or more districts; 12 are cut
    on the map, and in the other 5 the 2020 lines leave no visible piece (their cards still say so).
    Slivers outside the city's outline are left out, and specks under ~500 m² join the unit they
-   touch. The city's units are simplified together to about 30 m.
+   touch. The city's units are simplified together to about 10 m, so close up the borders follow
+   their real curves.
 4. The 63 provinces come from the Vietnam 63 app and are fitted to the city's outline: the
    neighbours give up what overlaps it and take in the gaps up to it (a gap that touches no
    neighbour is sea). They are grouped into the 34 by Resolution 202/2025/QH15.
-5. Colours are chosen so that no two neighbours are closer than ΔE 0.045 (OKLab), in normal
-   vision and in simulated red–green colour blindness, in light and dark mode.
+5. Colours: each former district gets a hue at least 40° from its neighbours' and its wards shades
+   of it. Neighbours in different former districts, wards and the provinces across the city's edge,
+   and neighbouring provinces are at least ΔE 0.045 apart (OKLab); wards inside one former district
+   at least 0.025, by design; the grey around a picked district at least 0.045 from every colour.
+   All of it holds in normal vision and simulated red–green colour blindness, in light and dark mode.
 
 The script prints what it did: the cut wards and their shares, where the 2020 lines disagree with
 the resolution (Phường Bình Dương and Xã Bà Điểm; the resolution wins), districts whose area

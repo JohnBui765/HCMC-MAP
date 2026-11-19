@@ -45,10 +45,11 @@ What it does
   4. The city's units are simplified together (shapely.coverage_simplify), so shared borders stay
      shared. The provinces around are fitted to the city's outline: gaps go to the neighbour that
      borders them, or else to the sea. The 63 are grouped into the 34 by Resolution 202/2025/QH15.
-  5. Colours: the provinces take eight jade tones and each former district a family of hues for
-     its wards, chosen so that no two neighbours (the city's units, and the provinces across its
-     edge) are closer than ΔE 0.045 in OKLab, in normal vision and simulated red–green colour
-     blindness, in light and dark mode.
+  5. Colours: the provinces take eight jade tones; each former district takes a hue at least 40°
+     from its neighbours', and its wards close shades of it. Wards of different former districts,
+     wards and the provinces across the city's edge, districts, and provinces are at least ΔE 0.045
+     apart in OKLab; wards inside one former district at least 0.025, the seams between them doing
+     the rest. All in normal vision and simulated red–green colour blindness, light and dark mode.
 """
 import json, math, re, sys, glob
 from datetime import date
@@ -337,7 +338,7 @@ def rebuild_faces(units, extra_lines):
     return faces, owner
 
 # ---------------------------------------------------------------- 2. former districts
-TOLERANCE = 3.0      # coverage simplification, in units (~30 m)
+TOLERANCE = 1.0      # coverage simplification, in units (10 m): close up, borders follow their real curves
 def assign_districts(units, dists):
     gb = [d['gb'] for d in dists]
     idx = {d['id']: i for i, d in enumerate(dists)}
@@ -462,7 +463,7 @@ def set_window(provs):
     return box(0, 0, x1 - x0 + 2 * m, y1 - y0 + 2 * m)
 
 def fit_country(provs, city, old_geoms):
-    """Hồ Chí Minh City's own outline (30 m) replaces the coarse one (0.7 km) of the three provinces it
+    """Hồ Chí Minh City's own outline (10 m) replaces the coarse one (0.7 km) of the three provinces it
     was made from. Neighbours give up what overlaps it and take in the gaps up to it; a gap that
     touches no neighbour is sea."""
     old = set(old_geoms)
@@ -568,9 +569,17 @@ def jade_tones(codes, nb):
     low = min([pair[tone[a]][tone[b]] for a in tone for b in nb[a] if b in tone] or [1])
     return tone, low
 
-THEMES = {'light': {'L': [0.86, 0.79, 0.92, 0.74, 0.95], 'C': 0.075}, 'dark': {'L': [0.50, 0.59, 0.42, 0.66, 0.37], 'C': 0.09}}
+# Light, quiet tints, as on a modern street map and near the Atlat tones of Map Learning (lightness
+# 0.85–0.93): five shades per hue, 0.03 apart, so that the wards of one former district read as one
+# family and the white seams between them do the separating.
+THEMES = {'light': {'L': [0.95, 0.92, 0.89, 0.86, 0.83], 'C': 0.06}, 'dark': {'L': [0.47, 0.435, 0.40, 0.365, 0.33], 'C': 0.055}}
 HUES = list(range(0, 360, 20))                     # eighteen hues to choose from
-def option_colour(h, s, th): return oklch(THEMES[th]['L'][s], THEMES[th]['C'] * (0.85 if s >= 3 else 1), h + (7 if s % 2 else -7))
+def option_colour(h, s, th): return oklch(THEMES[th]['L'][s], THEMES[th]['C'], h + (5 if s % 2 else -5))
+DE_IN = 0.025      # the floor between wards of one former district (close shades of its hue)
+HUE_GAP = 40       # neighbouring former districts at least this far apart in hue (degrees)
+# The grey of the units left out of focus (--grey-unit in index.html): darker than every fill, so that
+# it stays at least DE_MIN from all of them, colour-blind vision included.
+GREY = {'light': '#abaeb1', 'dark': '#1f2224'}
 _LAB = {}
 def _labs(hexc):
     if hexc not in _LAB: _LAB[hexc] = [lab_of(hexc, v) for v in ('normal', 'protan', 'deutan')]
@@ -587,8 +596,9 @@ def _tables(tones_light, tones_dark):
 def city_colours(items, group_of, edges, families):
     """items: the city's units (dicts with c, nb). With families, the units of one former district share
     its hue and differ in shade; without, each unit has its own hue and shade. edges: code → jade tones
-    of the provinces it touches. Maximises the smallest ΔE over all touching pairs (then the number of
-    pairs under 0.045), by repeatedly improving the worst pair."""
+    of the provinces it touches. Each touching pair has a floor: DE_IN inside one family, DE_MIN across
+    families and against the provinces. Maximises the smallest ΔE as a share of its floor (then the
+    number of pairs under their floor), by repeatedly improving the worst pair."""
     import random
     rnd = random.Random(7)
     T, E = _tables(None, None)
@@ -606,12 +616,23 @@ def city_colours(items, group_of, edges, families):
         same = {shade[c] for c in u['nb'] if c in shade and group_of(by[c]) == group_of(u)}
         shade[u['c']] = next(s for s in range(5) if s not in same)
     opt = lambda c: (hue[group_of(by[c])], shade[c])
+    floor = {(a, b): DE_IN if families and group_of(by[a]) == group_of(by[b]) else DE_MIN for a, b in pairs}
+    # Neighbouring families (former districts, or with the districts the districts themselves) differ in
+    # hue by at least HUE_GAP, so a family reads as its own colour and not as a lighter or darker
+    # neighbour. This comes first; the ΔE floors after it.
+    hgap = lambda a, b: min(abs(a - b) % 360, 360 - abs(a - b) % 360)
+    border = {}
+    for a, b in pairs:
+        ga, gb = group_of(by[a]), group_of(by[b])
+        if ga != gb: border.setdefault(tuple(sorted((ga, gb))), (a, b))
+    clashes = lambda: [ab for (ga, gb), ab in border.items() if hgap(hue[ga], hue[gb]) < HUE_GAP]
+    def vals():
+        return [(T[(opt(a), opt(b))], floor[(a, b)], a, b) for a, b in pairs] + [(E[(opt(c), t)], DE_MIN, c, None) for c in edges for t in edges[c]]
     def score():
-        vals = [T[(opt(a), opt(b))] for a, b in pairs] + [E[(opt(c), t)] for c in edges for t in edges[c]]
-        return (min(vals), -sum(v < DE_MIN for v in vals), -sum(max(0, DE_MIN - v) for v in vals))
+        v = vals()
+        return (-len(clashes()), min(x / f for x, f, _, _ in v), -sum(x < f for x, f, _, _ in v), -sum(max(0, f - x) / f for x, f, _, _ in v))
     def worst():
-        w = [(T[(opt(a), opt(b))], a, b) for a, b in pairs] + [(E[(opt(c), t)], c, None) for c in edges for t in edges[c]]
-        return sorted(w)[:6]
+        return [(0, a, b) for a, b in clashes()[:3]] + sorted((x / f, a, b) for x, f, a, b in vals())[:6]
     def climb(best):
         for it in range(400):
             moved = False
@@ -637,7 +658,7 @@ def city_colours(items, group_of, edges, families):
     # When stuck, shake: give a few families near the worst pair a random hue, climb again, and keep
     # the result only if it is better.
     for kick in range(60):
-        if best[0] >= DE_MIN + 0.006: break
+        if best[0] == 0 and best[1] >= 1.12: break
         saved = (dict(hue), dict(shade))
         _, a, b = worst()[0]
         for g in rnd.sample(sorted({group_of(by[a])} | gnb[group_of(by[a])]), k=min(2, 1 + len(gnb[group_of(by[a])]))):
@@ -647,7 +668,9 @@ def city_colours(items, group_of, edges, families):
         else: hue, shade = saved
     for u in items:
         u['cl'], u['cd'] = option_colour(*opt(u['c']), 'light'), option_colour(*opt(u['c']), 'dark')
-    return best, len(set(hue.values()))
+    v = vals()
+    low = lambda f: min([x for x, g, _, _ in v if g == f] or [None])
+    return best, len(set(hue.values())), low(DE_IN), low(DE_MIN), sum(x < f for x, f, _, _ in v) + len(clashes())
 
 # ---------------------------------------------------------------- main
 def main(db, adm2, mapping, vn63):
@@ -853,12 +876,14 @@ def main(db, adm2, mapping, vn63):
             for u in level:
                 if segs[u['c']] & sp: out.setdefault(u['c'], set()).add(tone_of(p))
         return out
-    sw, fw = city_colours(W, lambda u: u['r'], touching(W, lambda p: b34[p['g']]['tone']), True)
-    sd, fd2 = city_colours(Dl, lambda d: d['c'], touching(Dl, lambda p: p['tone']), False)
-    print(f'colours, wards: {fw} hue families; closest touching pair ΔE {sw[0]:.3f}, {-sw[1]} pairs under {DE_MIN} (normal and colour-blind, both themes, provinces across the edge included)')
-    print(f'colours, districts: closest touching pair ΔE {sd[0]:.3f}, {-sd[1]} pairs under {DE_MIN}')
+    _, fw, win, wout, wbad = city_colours(W, lambda u: u['r'], touching(W, lambda p: b34[p['g']]['tone']), True)
+    _, _, _, dout, dbad = city_colours(Dl, lambda d: d['c'], touching(Dl, lambda p: p['tone']), False)
+    print(f'colours, wards: {fw} hue families; closest pair inside a former district ΔE {win:.3f} (floor {DE_IN}), across district lines '
+          f'and against the provinces {wout:.3f} (floor {DE_MIN}); pairs under their floor: {wbad} (normal and colour-blind, both themes)')
+    print(f'colours, districts: closest touching pair ΔE {dout:.3f}, pairs under {DE_MIN}: {dbad}')
     hl = min(_de(u[k], '#ffd43b') for u in W + Dl for k in ('cl', 'cd'))
-    print(f'colours: the yellow of a selected unit is at least ΔE {hl:.3f} from every fill')
+    gr = min(min(_de(u['cl'], GREY['light']), _de(u['cd'], GREY['dark'])) for u in W + Dl)
+    print(f'colours: the yellow of a selected unit is at least ΔE {hl:.3f} from every fill, the grey around a picked one {gr:.3f}')
     # Around Vietnam: neighbouring countries and their borders, inside the window.
     land = clean(proj(unary_union(land_ll))).intersection(ext)
     land_polys = [encode(rings_of(q)) for q in polys_of(land) if q.area > 2e4]
