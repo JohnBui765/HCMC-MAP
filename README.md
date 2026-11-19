@@ -31,6 +31,14 @@ Address: **https://johnbui765.github.io/HCMC-MAP/**
 - **Clean view.** The eye button at the bottom right (or H on a keyboard) hides the controls: the top
   card, the chips, the zoom and ⤢ buttons and the tab bar. The map, its taps and its cards keep working, and
   a practice question stays on screen. Tap the eye again to bring the controls back.
+- **Coordinates.** In Learn, the crosshair button above the eye opens a box: type a coordinate as
+  Apple Maps shows it (`10,77252° N, 106,69802° E`; dots, or degrees, minutes and seconds as the
+  Compass app shows them, work too) and the map puts a red dot there and names the ward. The same
+  card lists four places close to due north, east, south and west of Bến Thành Market, with their
+  coordinates, to compare with yours: Lái Thiêu Market (N), Cát Lái Port (E), Tôn Đức Thắng
+  University (S) and Đầm Sen Park (W). A bigger latitude is further north, a bigger longitude further
+  east. The dot is kept on your phone only (and in your backup file).
+- **Light only.** The map stays light even when the phone or the browser is set to dark mode.
 - **Mist like Map Learning's.** Drawn by the graphics chip over the whole screen: clear over the city, the
   provinces around it and the sea within 60 km of them, covering everything from about 240 km out,
   at every zoom and with no edges.
@@ -84,7 +92,7 @@ exactly as above.
 - **Laptop:** open the link in Chrome or Edge and click the install icon in the address bar.
 
 After the first visit it works without internet. A phone that has an older version installed picks
-up this one the next time the app is opened online (the cache is now `hcmc-map-v5`); progress is
+up this one the next time the app is opened online (the cache is now `hcmc-map-v6`); progress is
 kept.
 
 ## Your progress
@@ -95,7 +103,7 @@ device. "Reset this level" erases only the level on show.
 
 ## After editing any file
 
-Change `VERSION` at the top of `sw.js` (for example to `PREFIX + 'v6'`). Otherwise installed
+Change `VERSION` at the top of `sw.js` (for example to `PREFIX + 'v7'`). Otherwise installed
 copies keep showing the cached version.
 
 ## Rebuilding the map data
@@ -133,7 +141,7 @@ What it does, in short:
    of it. Neighbours in different former districts, wards and the provinces across the city's edge,
    and neighbouring provinces are at least ΔE 0.045 apart (OKLab); wards inside one former district
    at least 0.025, by design; the grey around a picked district at least 0.045 from every colour.
-   All of it holds in normal vision and simulated red–green colour blindness, in light and dark mode.
+   All of it holds in normal vision and simulated red–green colour blindness.
    In the app, five of the provinces around the city take another of the eight tones (Lâm Đồng and
    Đồng Tháp with the wards; Bình Thuận, Tiền Giang and Đồng Tháp with the districts), so that they
    also stand 0.045 apart from the plain land beyond the region.
@@ -174,4 +182,6 @@ smaller sizes from it; `maskable-512.png` has the outline at 77 % so it stays in
   former district, then by their official code.
 - **Around Vietnam:** the neighbouring countries from Natural Earth (public domain), via the Vietnam
   63 app. Biển Đông is labelled East Sea, the name Vietnam uses in English.
+- **Coordinates of the four places to compare with:** OpenStreetMap (© OpenStreetMap contributors,
+  ODbL) and Wikidata (CC0).
 - **Typeface:** Be Vietnam Pro, SIL Open Font License 1.1 (see `OFL.txt`).
