@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>HCMC Map</title>
-<meta name="description" content="Learn Hồ Chí Minh City's 168 wards and communes of 1 July 2025, and the 38 districts they replaced, on an equal-area map of Vietnam that zooms smoothly from the whole country down to a single ward.">
+<meta name="description" content="Learn Hồ Chí Minh City's 168 wards and communes of 1 July 2025, and the 38 districts they replaced, on an equal-area map of the city and the provinces around it.">
 <meta name="theme-color" content="#cfe6f0" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0f2533" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
@@ -382,7 +382,7 @@ table.stats { width: 100%; border-collapse: collapse; font-variant-numeric: tabu
 </style>
 </head>
 <body>
-<div id="stage" role="img" aria-label="Map of Vietnam, with Hồ Chí Minh City's 168 wards and communes and the 38 districts they replaced">
+<div id="stage" role="img" aria-label="Map of Hồ Chí Minh City's 168 wards and communes and the 38 districts they replaced, with the provinces around it">
   <canvas id="back"></canvas>
   <canvas id="backr"></canvas>
   <div id="live"><canvas id="mapc"></canvas><svg id="fx" aria-hidden="true" style="display:none"><g id="fxw"></g></svg></div>
@@ -415,7 +415,7 @@ table.stats { width: 100%; border-collapse: collapse; font-variant-numeric: tabu
 'use strict';
 /* =====================================================================
    HCMC Map — Hồ Chí Minh City as merged on 1 July 2025: its 168 wards, communes and special zone,
-   and the 38 districts they replaced, on an equal-area map of Vietnam. Built on the engine of Map
+   and the 38 districts they replaced, with the provinces around it. Built on the engine of Map
    Learning. Plain JavaScript, no libraries.
    Sections:
    1 data · 2 storage · 3 map layers · 4 drawing · 5 labels · 6 fog
@@ -442,7 +442,7 @@ const EXT = D.meta.extent;           // the drawn window [x, y, w, h]; beyond it
 const LV = { w: D.w, d: D.d };       // the two levels; each has units and groups
 const PROVS = D.d.groups;            // the three former provinces
 const UBY = {};                      // the units of both levels by code (wards: digits; districts: letters)
-const KM = D.meta.m_per_unit / 1000; // km per world unit: the map is equal-area; lengths are true to 0.21% on the mainland, 0.61% at the far end of Trường Sa
+const KM = D.meta.m_per_unit / 1000; // km per world unit: the map is equal-area; lengths are true to 0.3% across the region
 const NOUN = { w: { one: 'ward', many: 'wards' }, d: { one: 'district', many: 'districts' } };
 const TYPE_EN = { 'phường': 'Ward', 'xã': 'Commune', 'đặc khu': 'Special zone', 'quận': 'Urban district', 'huyện': 'Rural district', 'thành phố': 'City' };
 let LEVEL = 'w', PROV = [], BY = {}, ALL = [], REGIONS = [], N = NOUN.w;
@@ -501,6 +501,29 @@ P63.forEach(p => { p.rings = parseRings(p.d); p.path = new Path2D(p.d); p.fb = b
 P34.forEach(q => { P34BY[q.c] = q; });
 const CITY34 = P34BY['79'];
 const bySz = a => a.slice().sort((x, y) => y.sz - x.sz), P34S = bySz(P34), P63S = bySz(P63);
+// Only the provinces around the city are on the map: the four that border it today, shown with the
+// wards, and the nine of before that they were formed from, shown with the districts. The rest of
+// the country is plain land, like the neighbouring countries, under the mist.
+const NEAR34 = new Set(CITY34.nb), NEAR63 = new Set(P63.filter(p => NEAR34.has(p.g)).map(p => p.c));
+const nearProv = q => (LEVEL === 'w' ? NEAR34 : NEAR63).has(q.c);
+// The build gave the provinces jade tones for the whole country. Five of those around the city now
+// border plain land instead of other jade provinces, and fell under the ΔE 0.045 floor against it;
+// these tones keep every floor (the plain land, the city's units they touch, and each other), in
+// normal and red–green colour-blind vision, in both themes.
+for (const [c, t] of [['68', 3], ['82', 3]]) P34BY[c].tone = t;              // Lâm Đồng, Đồng Tháp
+for (const [c, t] of [['60', 6], ['82', 3], ['87', 6]]) P63BY[c].tone = t;   // Bình Thuận, Tiền Giang, Đồng Tháp
+// The region (the city with Côn Đảo, and those provinces), and the camera's limit: 150 km around it.
+const REGION = (() => {
+  const t = D.meta.territory_bbox; let x0 = t[0], y0 = t[1], x1 = t[0] + t[2], y1 = t[1] + t[3];
+  for (const p of P63) if (NEAR63.has(p.c)) { x0 = Math.min(x0, p.fb[0]); y0 = Math.min(y0, p.fb[1]); x1 = Math.max(x1, p.fb[0] + p.fb[2]); y1 = Math.max(y1, p.fb[1] + p.fb[3]); }
+  return [x0, y0, x1 - x0, y1 - y0];
+})();
+const LIMIT = (() => {
+  const m = 150 / (D.meta.m_per_unit / 1000), e = D.meta.extent;
+  const x0 = Math.max(e[0], REGION[0] - m), y0 = Math.max(e[1], REGION[1] - m);
+  const x1 = Math.min(e[0] + e[2], REGION[0] + REGION[2] + m), y1 = Math.min(e[1] + e[3], REGION[1] + REGION[3] + m);
+  return [x0, y0, x1 - x0, y1 - y0];
+})();
 const provList = () => (LEVEL === 'w' ? P34 : P63);   // the provinces of the level on show
 const provOfShape = p => (LEVEL === 'w' ? P34BY[p.g] : p);
 const inBox = (b, w) => w[0] >= b[0] && w[1] >= b[1] && w[0] <= b[0] + b[2] && w[1] <= b[1] + b[3];
@@ -614,6 +637,11 @@ function project(lon, lat) {
   const k = Math.sqrt(2 / (1 + Math.sin(p1) * Math.sin(p) + Math.cos(p1) * Math.cos(p) * Math.cos(l)));
   return [PROJ.R * k * Math.cos(p) * Math.sin(l) - PROJ.ox, -PROJ.R * k * (Math.cos(p1) * Math.sin(p) - Math.sin(p1) * Math.cos(p) * Math.cos(l)) - PROJ.oy];
 }
+// The East Sea's name sat in the middle of the sea, out of this map's reach: it now names the open
+// sea off the city, once the view is wider than the home view. Cambodia's name moves nearer the
+// border, so that zoomed right out on a phone the edge of the screen doesn't cut it.
+{ const w = D.deco.water.find(w => w.t === 'East Sea'); if (w) { w.at = project(107.75, 9.75); w.wide = true; } }
+{ const c = D.deco.countries.find(c => c.t === 'CAMBODIA'); if (c) c.at = project(105.5, 12.4); }
 
 /* Layers are cut into tiles that are skipped when off-screen, and simplified at a few
    levels of detail for when the map is zoomed out — so a redraw only touches what shows. */
@@ -742,7 +770,7 @@ const OUTL = makeLayer(parseRings(D.outline).map(r => [r]), true);          // t
 // Each level's province lines are built the first time that level is shown.
 const PROVB = (() => {
   const city = { g: '79', rings: parseRings(D.outline) }, edges = edgesOf([...P63.filter(p => !p.hcmc), city]);
-  const inner = edges.filter(e => e.q && e.p !== city && e.q !== city), cache = {};
+  const inner = edges.filter(e => e.q && e.p !== city && e.q !== city && (NEAR63.has(e.p.c) || NEAR63.has(e.q.c))), cache = {};
   return { coast: lineLayer(edges.filter(e => !e.q && e.p !== city)),
     level: lv => cache[lv] || (cache[lv] = lineLayer(lv === 'w' ? inner.filter(e => e.p.g !== e.q.g) : inner)) };
 })();
@@ -878,8 +906,9 @@ function drawWorld(ctx, u, view) {
   ctx.lineWidth = .7 * u; ctx.strokeStyle = V.coast; drawLayer(ctx, LANDL, lod, view);
   ctx.lineWidth = 1.1 * u; ctx.strokeStyle = V.frontier; ctx.setLineDash([7 * u, 2.4 * u, 1.3 * u, 2.4 * u]);
   drawLayer(ctx, FRONTL, lod, view); ctx.setLineDash([]);
-  // Vietnam's provinces in jade: the 34 with the wards, the 63 with the districts; then the coast.
-  for (const p of P63) if (!p.hcmc && meets(fb(p), view)) { ctx.fillStyle = provFill(p); ctx.fill(p.path, 'evenodd'); }
+  // The provinces around the city in jade (the 34 with the wards, the 63 with the districts), the
+  // rest of the country plain like the neighbouring countries; then the coast.
+  for (const p of P63) if (!p.hcmc && meets(fb(p), view)) { ctx.fillStyle = NEAR63.has(p.c) ? provFill(p) : V.other; ctx.fill(p.path, 'evenodd'); }
   ctx.lineWidth = .9 * u; ctx.strokeStyle = V.border; ctx.globalAlpha = .85; drawLayer(ctx, PROVB.level(LEVEL), lod, view);
   ctx.globalAlpha = 1; ctx.strokeStyle = V.frontier; drawLayer(ctx, PROVB.coast, lod, view);
   // The city: its units, the lines between them, and the former districts' (or provinces') lines,
@@ -1040,17 +1069,8 @@ function layoutLabels() {
     if (onCanvas(x, y)) put(make(String(p.stt), F.num, 10.5, x, y, 'center', V.ink, V.paper));
   }
   // The provinces around: the 34 with the wards, the 63 with the districts, largest first.
-  for (const q of LEVEL === 'w' ? P34S : P63S) if (!q.hcmc && q !== selProv && q.sz * k > 22)
+  for (const q of LEVEL === 'w' ? P34S : P63S) if (!q.hcmc && q !== selProv && nearProv(q) && q.sz * k > 22)
     put(make(q.n, F.pv, 11, X(q.lab[0]), Y(q.lab[1]), 'center', V.muted, null));
-  // Hoàng Sa and Trường Sa, with the city or province each belongs to.
-  for (const a of D.deco.archipelagos) {
-    const [bx, by, bw, bh] = a.box, cx = X(bx + bw / 2), of = provList().find(q => q.n === a.of);
-    for (const cy of [Y(by + bh / 2), Y(by + bh) + 22, Y(by) - 22]) {
-      if (!onCanvas(cx, cy)) continue;
-      const Ls = [make(a.t, F.arch, 12.5, cx, cy - 8, 'center', V.seaInk, V.sea), make(of ? of.full : a.of, F.archSub, 11, cx, cy + 8, 'center', V.seaInk, V.sea)];
-      if (Ls.every(L => free(boxOf(L)))) { Ls.forEach(L => put(L, true)); break; }
-    }
-  }
   // The neighbourhood, least important last, leaving out what the mist covers.
   const clear = it => !mistAt(it.at);
   for (const c of D.deco.countries.filter(clear)) put(make(c.t, c.big ? F.ctryBig : F.ctry, c.big ? 17 : 12, X(c.at[0]), Y(c.at[1]), 'center', V.muted, null, { ls: 1.8, alpha: .85 }));
@@ -1059,7 +1079,7 @@ function layoutLabels() {
     if (onCanvas(x, y) && put(make(c.t, F.ncap, 11, x + 6, y, 'left', V.muted, null))) dots.push({ x, y, kind: 'ncap' });
   }
   for (const c of D.deco.islands.filter(clear)) put(make(c.t, F.island, 11.5, X(c.at[0]), Y(c.at[1]), 'center', V.muted, null));
-  for (const w of D.deco.water.filter(clear)) if (k >= (w.minK || 0)) put(w.big ? make(w.t, F.waterBig, 17, X(w.at[0]), Y(w.at[1]), 'center', V.seaInk, null, { ls: 3 }) : make(w.t, F.water, 12.5, X(w.at[0]), Y(w.at[1]), 'center', V.seaInk, null));
+  for (const w of D.deco.water.filter(clear)) if (k >= (w.minK || 0) && !(w.wide && k > 0.7 * kFit)) put(w.big ? make(w.t, F.waterBig, 17, X(w.at[0]), Y(w.at[1]), 'center', V.seaInk, null, { ls: 3 }) : make(w.t, F.water, 12.5, X(w.at[0]), Y(w.at[1]), 'center', V.seaInk, null));
   return { labels, dots };
 }
 function drawDots(ctx, dots) {
@@ -1092,18 +1112,18 @@ function drawLabels(ctx, labels) {
 }
 
 /* ---------- 6. Fog ----------
-   Clear over Vietnam: its land, Hoàng Sa and Trường Sa, and the sea within 60 km of them; beyond,
-   the mist thickens and from about 320 km covers everything. As in Map Learning, the mist is painted
+   Clear over the region: the city (with Côn Đảo), the provinces around it, and the sea within 60 km
+   of them; beyond, the mist thickens and from about 240 km covers everything. As in Map Learning, the mist is painted
    by the graphics chip on a canvas exactly the size of the screen that never moves with the map, so
    every pixel is either clear map or fog, at every zoom: there is never an edge. The clouds are one
    noise picture laid at seven scales; as the zoom changes, the largest scale fades out and a finer one
-   fades in, so the mist has the same depth at every zoom. How far each point is from Vietnam comes from
+   fades in, so the mist has the same depth at every zoom. How far each point is from the region comes from
    a small picture worked out once (about 3 km a pixel). Without WebGL, an older fog picture is laid
    over the map instead. */
-const FOG_CLEAR_KM = 60, FOG_SOLID_KM = 320, FOG_WARP_KM = 55;   // the edge wanders ±55 km, never onto land
+const FOG_CLEAR_KM = 60, FOG_SOLID_KM = 240, FOG_WARP_KM = 55;   // the edge wanders ±55 km, never onto land
 const RF = Math.sqrt(9e5 / (EXT[2] * EXT[3]));         // distance-picture pixels per world unit (about 900k pixels)
 const FW = Math.ceil(EXT[2] * RF), FH = Math.ceil(EXT[3] * RF);
-let fogDist = null;      // km from Vietnam, per pixel of the distance picture
+let fogDist = null;      // km from the region, per pixel of the distance picture
 let fogField = null;     // the fallback fog pictures
 function hash(x, y, s) {
   let h = Math.imul(x, 374761393) ^ Math.imul(y, 668265263) ^ Math.imul(s, 2246822519);
@@ -1123,16 +1143,15 @@ function fbm(x, y, s, oct) {
 }
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const clamp01 = x => (x < 0 ? 0 : x > 1 ? 1 : x);
-// km from Vietnam's land (stroked too, so the smallest islets count) and from the two archipelagos,
+// km from the region's land (stroked too, so the smallest islets count),
 // worked out in slices of a few milliseconds so the first moments stay smooth.
 function buildFogDistance(done) {
   const m = document.createElement('canvas'); m.width = FW; m.height = FH;
   const c = m.getContext('2d', { willReadFrequently: true });
   c.setTransform(RF, 0, 0, RF, -EXT[0] * RF, -EXT[1] * RF);
   c.fillStyle = '#000'; c.lineWidth = 2 / RF; c.strokeStyle = '#000';
-  for (const p of P63) { c.fill(p.path, 'evenodd'); c.stroke(p.path); }
+  for (const p of P63) if (p.hcmc || NEAR63.has(p.c)) { c.fill(p.path, 'evenodd'); c.stroke(p.path); }
   { const o = new Path2D(D.outline); c.fill(o, 'evenodd'); c.stroke(o); }
-  for (const a of D.deco.archipelagos) c.fillRect(...a.box);
   const img = c.getImageData(0, 0, FW, FH).data, N = FW * FH, dist = new Float32Array(N);
   for (let i = 0; i < N; i++) dist[i] = img[i * 4 + 3] ? 0 : 1e9;
   const R2 = Math.SQRT2;
@@ -1241,7 +1260,7 @@ function makeNoise(size) {
   return out;
 }
 
-// The mist on the graphics chip: Map Learning's shader, with the distance from Vietnam read from the
+// The mist on the graphics chip: Map Learning's shader, with the distance from the region read from the
 // distance picture instead of a circle (km / 4 per byte, so up to 1,020 km).
 const fogGL = (() => {
   const cv = $('fogGL');
@@ -1254,7 +1273,7 @@ uniform sampler2D uNoise; uniform sampler2D uDist; uniform vec3 uBase; uniform v
 void main() {
   vec2 px = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / uScale;
   vec2 w = (px - uCam.yz) / uCam.x;
-  // How far from Vietnam, in km (outside the distance picture: far); the edge wanders a little so it
+  // How far from the region, in km (outside the distance picture: far); the edge wanders a little so it
   // reads as mist, not a line.
   vec2 uv = (w - uBox.xy) / uBox.zw;
   float d = (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) ? 5000.0 : texture2D(uDist, uv).r * 1020.0;
@@ -1426,24 +1445,22 @@ function camFor(box, pad = 1.06) {
   const k = Math.min(r.w / (box[2] * pad), r.h / (box[3] * pad));
   return { k, x: r.x + (r.w - box[2] * k) / 2 - box[0] * k, y: r.y + (r.h - box[3] * k) / 2 - box[1] * k };
 }
-// Home is the city's mainland; Côn Đảo, ~180 km out at sea, has its own chip. Vietnam is framed
-// with Hoàng Sa and Trường Sa where the screen is wide enough, otherwise the mainland.
+// Home is the city's mainland; Côn Đảo, ~180 km out at sea, has its own chip.
 const homeBox = () => D.meta.mainland_bbox;
-function vnBox() { const a = D.meta.vn_bbox, b = D.meta.country_bbox; return camFor(a, 1.04).k >= 0.8 * camFor(b, 1.04).k ? a : b; }
 function limits() {
   kFit = camFor(homeBox(), 1.04).k;
-  // Normally the drawn window must cover the screen, but never so strictly that the whole
-  // country is out of reach (landscape phones have little height to spare).
-  kMin = Math.min(Math.max(vw / EXT[2], vh / EXT[3]), camFor(vnBox(), 1.04).k * 0.85);
+  // Zooming out stops at the region: the camera's limit must cover the screen, but never so strictly
+  // that the whole region is out of reach (landscape phones have little height to spare).
+  kMin = Math.min(Math.max(vw / LIMIT[2], vh / LIMIT[3]), camFor(REGION, 1.04).k * 0.85);
   kMax = Math.max(4, kFit * 40);            // down to about 2.5 m a pixel
 }
-// Allowed camera offsets at a zoom: the drawn window covers the visible part of the screen (the
-// part not under a card) or, when it is smaller than that, stays wholly on it (beyond the window
-// there is only solid fog anyway). Measured against the free rectangle rather than the whole
-// screen, so that a docked card never pushes the country out from under itself.
+// Allowed camera offsets at a zoom: the camera's limit (the region and 150 km around it) covers the
+// visible part of the screen (the part not under a card) or, when it is smaller than that, stays
+// wholly on it (beyond it there is only mist). Measured against the free rectangle rather than the
+// whole screen, so that a docked card never pushes the region out from under itself.
 const span = (a, b) => (a < b ? [a, b] : [b, a]);
-const xRange = k => { const r = freeRect(); return span(r.x + r.w - k * (EXT[0] + EXT[2]), r.x - k * EXT[0]); };
-const yRange = k => { const r = freeRect(); return span(r.y + r.h - k * (EXT[1] + EXT[3]), r.y - k * EXT[1]); };
+const xRange = k => { const r = freeRect(); return span(r.x + r.w - k * (LIMIT[0] + LIMIT[2]), r.x - k * LIMIT[0]); };
+const yRange = k => { const r = freeRect(); return span(r.y + r.h - k * (LIMIT[1] + LIMIT[3]), r.y - k * LIMIT[1]); };
 // Clamp a camera into the limits, scaling about (ax, ay) when the zoom has to change.
 function hardClamp(c, ax = vw / 2, ay = vh / 2) {
   const k = Math.min(kMax, Math.max(kMin, c.k));
@@ -1584,7 +1601,7 @@ function frameBox(b, minPx = 90) {
 
 /* ---------- 7b. The compass: true north at the middle of the screen ----------
    The map never turns, so north is up; on this projection true north leans a little away from the
-   centre line (at most 1.4° on the mainland, 2.5° at the far end of Trường Sa), and the needle follows it. */
+   centre line (less than 1° across the region), and the needle follows it. */
 // The projection's inverse (Snyder, Map Projections: A Working Manual, 1987).
 function unproject(x, y) {
   const r = Math.PI / 180, p1 = PROJ.lat0 * r, X = x + PROJ.ox, Y = -(y + PROJ.oy), rho = Math.hypot(X, Y);
@@ -1610,7 +1627,7 @@ function ratio(a, b) {
   const n = 1 / r, e = Math.pow(10, Math.max(0, Math.floor(Math.log10(n)) - 1));
   return `1/${(Math.round(n / e) * e).toLocaleString('en-GB')}`;
 }
-const shapeAt = w => P63.find(p => !p.hcmc && inBox(p.fb, w) && inRings(p.rings, w[0], w[1])) || null;
+const shapeAt = w => P63.find(p => !p.hcmc && NEAR63.has(p.c) && inBox(p.fb, w) && inRings(p.rings, w[0], w[1])) || null;
 const distOf = p => LV.d.by[LV.w.groups[p.r].id];        // a ward's former district (the one holding most of it)
 
 /* ---------- 8. Gestures: one finger pans, two fingers pinch to zoom, a tap picks; a wheel zooms on a laptop ---------- */
@@ -1722,8 +1739,11 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) aband
 function release() {
   let vx = 0, vy = 0;
   if (samples.length > 1) {
-    const a = samples[0], b = samples[samples.length - 1], dt = b.t - a.t;
-    if (dt > 0 && Math.abs(b.k - a.k) / a.k < 0.02) { vx = (b.x - a.x) / dt; vy = (b.y - a.y) / dt; }
+    // The speed of what is at the middle of the screen. (Measured from the camera's offset, the
+    // screen position of the world's corner far to the north-west, the last small zoom of a pinch
+    // read as a fast flick when zoomed in, and flung the map tens of kilometres to the south-east.)
+    const a = samples[0], b = samples[samples.length - 1], dt = b.t - a.t, W = toWorld(vw / 2, vh / 2);
+    if (dt > 0 && Math.abs(b.k - a.k) / a.k < 0.02) { vx = (b.x + b.k * W[0] - a.x - a.k * W[0]) / dt; vy = (b.y + b.k * W[1] - a.y - a.k * W[1]) / dt; }
   }
   if (performance.now() - (samples.length ? samples[samples.length - 1].t : 0) > 60) vx = vy = 0;
   if (Math.hypot(vx, vy) > 0.25 && !reduced) return glide(vx, vy);
@@ -2094,12 +2114,14 @@ function provCardHTML(q) {
   } else {
     rows += `<dt>Formed from</dt><dd>${q.members.length === 1 ? 'Itself: its boundaries did not change' : esc(listJoin(q.members.map(c => P63BY[c].full)))}<div class="sub">On 1 July 2025, Resolution 202/2025/QH15</div></dd>`;
   }
-  const nbs = q.nb.map(c => `<button type="button" class="chip" ${set[c].hcmc ? `data-home="${lv63 ? PROVS.findIndex(g => g.code === c) : -1}"` : `data-prov="${c}"`}>${esc(set[c].n)}</button>`).join('');
+  const off = q.nb.filter(c => !set[c].hcmc && !nearProv(set[c]));
+  const nbs = q.nb.filter(c => !off.includes(c)).map(c => `<button type="button" class="chip" ${set[c].hcmc ? `data-home="${lv63 ? PROVS.findIndex(g => g.code === c) : -1}"` : `data-prov="${c}"`}>${esc(set[c].n)}</button>`).join('');
   return `<div class="row drag-row"><div class="grow"><h2>${esc(q.full)}</h2><div class="sub">${kind} · ${lv63 ? 'one of the 63 until 30 June 2025' : 'one of the 34 since 1 July 2025'}</div></div>${closeBtn('data-close')}</div>
     <dl class="facts">${rows}</dl>
     ${q.note ? `<p class="small">${esc(q.note)}</p>` : ''}
     <h3>Size</h3><div class="sizes">${nestFig({ name: q.full, area: q.area }, VN_SIZE, true)}${pairFig({ name: q.full, area: q.area }, city)}</div>
-    <h3>Neighbours (${q.nb.length})</h3><div class="nbs">${nbs || '<span class="small">None on land</span>'}</div>
+    <h3>Neighbours (${q.nb.length})</h3><div class="nbs">${nbs || (off.length ? '' : '<span class="small">None on land</span>')}</div>
+    ${off.length ? `<p class="small">Not shown on this map: ${esc(listJoin(off.map(c => set[c].n)))}.</p>` : ''}
     <p class="small">Practice covers Hồ Chí Minh City only; the provinces around it are here for bearings and scale.</p>`;
 }
 const provHead = (p, closeAttrs) => `<div class="row drag-row"><div class="grow"><h2>${esc(nm(p))}</h2><div class="sub">No. ${p.stt} of ${LV[p.lv].units.length} · ${typeLabel(p)}${p.lv === 'd' ? ', until 2025' : ''}</div></div>${closeBtn(closeAttrs)}</div>`;
@@ -2293,14 +2315,14 @@ function showSources() {
   openSheet(`<div class="row drag-row"><div class="grow"><h2>Sources</h2></div>${closeBtn('data-close')}</div>
   <p>On 1 July 2025 Vietnam merged its 63 provinces into 34 (Resolution 202/2025/QH15) and abolished its districts. Hồ Chí Minh City took in Bình Dương and Bà Rịa – Vũng Tàu provinces, and is now divided directly into 168 units: 113 wards, 54 communes and the special zone of Côn Đảo (Resolution 1685/NQ-UBTVQH15). In this app “wards” means all 168.</p>
   <p>The other level shows the 38 district-level units of 30 June 2025 that they replaced: 22 of the old city (16 urban districts, Thủ Đức City and 5 rural districts), 9 of Bình Dương and 7 of Bà Rịa – Vũng Tàu. Around the city, the Wards level shows today’s 34 provinces and the Districts level the 63 of before.</p>
-  <p><b>The map</b> uses Lambert’s azimuthal equal-area projection, centred at 16° N, 106° E. Every unit keeps its true area, so a ward, a district, the city and a province can be compared by eye. Distances are true to within 0.25% on the mainland and 0.6% at the far end of Trường Sa.</p>
+  <p><b>The map</b> uses Lambert’s azimuthal equal-area projection, centred at 16° N, 106° E. Every unit keeps its true area, so a ward, a district, the city and a province can be compared by eye. Distances are true to within 0.3% across the region shown.</p>
   <p><b>Wards: boundaries, names and areas</b> from the merger map at sapnhap.bando.com.vn, as collected in the Vietnamese Provinces Database by Thang Le Quoc (github.com/thanglequoc/vietnamese-provinces-database, MIT licence, dataset 5.2.0). The shapes were joined into one network of borders and simplified to about 10 m.</p>
   <p><b>What each ward was formed from</b>, and so which former districts it draws on: Resolution 1685/NQ-UBTVQH15 as tabulated by Dorabot (dorabot.io/dia-chi/sap-nhap, CC BY 4.0).</p>
   <p><b>Former districts:</b> district boundaries from OCHA ROAP and the Government of Viet Nam (2020), licensed CC BY 3.0 IGO, via geoBoundaries (William &amp; Mary geoLab), fitted to the wards: a ward that came from one district lies wholly in it, and a ward that came from two or more is cut along the 2020 line. District 2, District 9 and Thủ Đức District are joined as Thủ Đức City (2021), and Long Điền and Đất Đỏ as Long Đất (1 January 2025). Their areas are measured on this map.</p>
   <p><b>Lines:</b> soft white seams separate the units (light grey ones over the plain paper of practice and progress). The slate lines are the borders between the groups: former districts over the wards, former provinces over the districts. Where a ward straddles two former districts (12 do), the true old border runs through it and is drawn dotted. As you zoom out, the seams fade once the units are too small to tell apart, and then the group lines.</p>
-  <p><b>Provinces:</b> the same 2020 district boundaries, merged into the 63 provinces, with Hoàng Sa and Trường Sa at their true positions, and fitted to the city’s own outline. The 34 are grouped as in Resolution 202/2025/QH15, with the areas listed in the Vietnamese Provinces Database. As that database records, three of them have since become centrally run cities: Đồng Nai on 30 April 2026, Quảng Ninh on 1 September 2026 and Bắc Ninh on 20 September 2026 (Resolutions 30, 36 and 39/2026/QH16); the map follows it. The areas and 2021 populations of the 63 are from the Statistical Yearbook of Vietnam 2021.</p>
+  <p><b>Provinces:</b> only those around the city are shown. With the wards, the four that border it today: Lâm Đồng, Đồng Nai, Tây Ninh and Đồng Tháp. With the districts, the nine they were formed from: Lâm Đồng, Đắk Nông and Bình Thuận; Đồng Nai and Bình Phước; Tây Ninh and Long An; Đồng Tháp and Tiền Giang. The rest of Vietnam is plain land, like the neighbouring countries, under the mist. The boundaries are the same 2020 district boundaries, merged into the 63 provinces and fitted to the city’s own outline. The 34 are grouped as in Resolution 202/2025/QH15, with the areas listed in the Vietnamese Provinces Database. As that database records, Đồng Nai has since become a centrally run city, on 30 April 2026 (Resolution 30/2026/QH16); the map follows it. The areas and 2021 populations of the 63 are from the Statistical Yearbook of Vietnam 2021.</p>
   <p><b>Colours:</b> each former district has a hue at least 40° around the colour wheel from its neighbours’, and its wards are shades of it; the provinces around are in eight jade tones. Neighbours in different former districts, a ward and the province across the city’s edge, and neighbouring provinces are never closer than ΔE 0.045 (OKLab); wards inside one former district are kept deliberately close, at least 0.025 apart, with the seams between them. Both hold in normal vision and in simulated red–green colour blindness, in light and dark mode.</p>
-  <p><b>Mist:</b> as in Map Learning, drawn by the graphics chip over the whole screen: clear over Vietnam and within 60 km of it, thickening beyond and covering everything from about 320 km out.</p>
+  <p><b>Mist:</b> as in Map Learning, drawn by the graphics chip over the whole screen: clear over the city, the provinces around it and the sea within 60 km of them, thickening beyond and covering everything from about 240 km out.</p>
   <p><b>Numbering:</b> former districts in the order of the national statistical code list; wards by former district, then by their official code.</p>
   <p><b>Around Vietnam:</b> the neighbouring countries from Natural Earth (public domain). Biển Đông is labelled East Sea, the name Vietnam uses in English.</p>
   <p><b>Typeface:</b> Be Vietnam Pro (SIL Open Font License).</p>`, true);

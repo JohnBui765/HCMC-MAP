@@ -2,20 +2,20 @@
 
 A practice app for Hồ Chí Minh City as it has been since the merger of 1 July 2025, at two levels:
 the **168 wards and communes** of today's city, and the **38 districts** they replaced. The city sits
-on an **equal-area map of the whole of Vietnam**, so you can see how big each unit is next to the
-units above and below it. It is built for the iPhone: install it on the Home Screen and it works
+on an **equal-area map of the city and the provinces around it**, so you can see how big each unit
+is next to the units above and below it. It is built for the iPhone: install it on the Home Screen and it works
 offline, like a native app. It also runs on a laptop. It is a sister app of Map Learning and works
 the same way.
 Address: **https://johnbui765.github.io/HCMC-MAP/**
 
 - **Two levels, one switch.** *Wards 168*: the 113 wards, 54 communes and the special zone of Côn
-  Đảo, in force since 1 July 2025, shown among today's **34 provinces**. *Districts 38*: the
+  Đảo, in force since 1 July 2025, shown with the **four provinces** around the city today. *Districts 38*: the
   district-level units of 30 June 2025, 22 from the old city, 9 from Bình Dương and 7 from Bà Rịa –
-  Vũng Tàu, shown among the **63 provinces** of before. The switch is at the top of Learn, Table,
+  Vũng Tàu, shown with the **nine provinces** of before that those four were formed from. The switch is at the top of Learn, Table,
   Practice and Progress; each level keeps its own progress. Practice covers the city only.
 - **True sizes.** The map uses Lambert's azimuthal equal-area projection, centred on Vietnam: every
-  ward, district, the city and every province keeps its true area, and distances are true to 0.25%
-  on the mainland (0.6% at the far end of Trường Sa).
+  ward, district, the city and every province keeps its true area, and across the region distances are true
+  to 0.3%.
 - **Zoom with two fingers.** On a phone or tablet, pinch to zoom; a tap only ever picks, at once
   (no double-tap or two-finger-tap zoom). If a tap could mean several tiny wards, the app asks you to
   pinch in rather than guess. On a laptop, use the mouse wheel (it glides) or the + and − buttons.
@@ -27,13 +27,13 @@ Address: **https://johnbui765.github.io/HCMC-MAP/**
     example, *District 1: 1/870 of the city's area*).
   - A unit too small to see at the present zoom is ringed.
   - A tiny **compass** at the top right points to true north (on this projection north leans away
-    from straight up by at most 1.4° on the mainland and 2.5° at the far end of Trường Sa, and the
-    needle follows it).
+    from straight up, by less than 1° across the region, and the needle follows it).
 - **Clean view.** The eye button at the bottom right (or H on a keyboard) hides the controls: the top
   card, the chips, the zoom and ⤢ buttons and the tab bar. The map, its taps and its cards keep working, and
   a practice question stays on screen. Tap the eye again to bring the controls back.
-- **Mist like Map Learning's.** Drawn by the graphics chip over the whole screen: clear over Vietnam
-  and its nearby seas, covering everything beyond, at every zoom and with no edges.
+- **Mist like Map Learning's.** Drawn by the graphics chip over the whole screen: clear over the city, the
+  provinces around it and the sea within 60 km of them, covering everything from about 240 km out,
+  at every zoom and with no edges.
 - **Grouped the way you already know the city.** Wards are grouped and numbered by their former
   district (District 1 first, Côn Đảo last). Each former district has a hue at least 40° around the
   colour wheel from its neighbours', and its wards are shades of it, separated by soft white seams;
@@ -41,9 +41,14 @@ Address: **https://johnbui765.github.io/HCMC-MAP/**
   At the Districts level, picking a district greys out the rest the same way. 12 wards straddle two
   former districts; each is grouped with the one holding most of it, and the true old border is
   drawn dotted where it differs (85 km in all). Districts are grouped by former province.
-- **The provinces around** are in eight jade tones. In Learn, tap one for its card: area, what it
-  was formed from or became, population (63 provinces, 2021), its size next to the city, and its
-  neighbours.
+- **Only the region.** The provinces around the city are in jade: Lâm Đồng, Đồng Nai, Tây Ninh and
+  Đồng Tháp with the wards; the nine they were formed from with the districts (Lâm Đồng, Đắk Nông,
+  Bình Thuận; Đồng Nai, Bình Phước; Tây Ninh, Long An; Đồng Tháp, Tiền Giang). The rest of Vietnam
+  is plain land, like the neighbouring countries, unnamed and not tappable. Zooming out stops once
+  the whole region shows, and the map can't be dragged more than 150 km past it.
+- **The provinces' cards.** In Learn, tap one for its card: area, what it was formed from or
+  became, population (63 provinces, 2021), its size next to the city, and its neighbours (those on
+  the map as buttons, the others named).
 - **The two levels are linked.** A ward's card shows its former district and what it was formed
   from, in the resolution's own list; a district's card shows which of today's wards its land went
   into. Tap a name to jump to the other level.
@@ -79,7 +84,7 @@ exactly as above.
 - **Laptop:** open the link in Chrome or Edge and click the install icon in the address bar.
 
 After the first visit it works without internet. A phone that has an older version installed picks
-up this one the next time the app is opened online (the cache is now `hcmc-map-v4`); progress is
+up this one the next time the app is opened online (the cache is now `hcmc-map-v5`); progress is
 kept.
 
 ## Your progress
@@ -90,7 +95,7 @@ device. "Reset this level" erases only the level on show.
 
 ## After editing any file
 
-Change `VERSION` at the top of `sw.js` (for example to `PREFIX + 'v5'`). Otherwise installed
+Change `VERSION` at the top of `sw.js` (for example to `PREFIX + 'v6'`). Otherwise installed
 copies keep showing the cached version.
 
 ## Rebuilding the map data
@@ -129,6 +134,9 @@ What it does, in short:
    and neighbouring provinces are at least ΔE 0.045 apart (OKLab); wards inside one former district
    at least 0.025, by design; the grey around a picked district at least 0.045 from every colour.
    All of it holds in normal vision and simulated red–green colour blindness, in light and dark mode.
+   In the app, five of the provinces around the city take another of the eight tones (Lâm Đồng and
+   Đồng Tháp with the wards; Bình Thuận, Tiền Giang and Đồng Tháp with the districts), so that they
+   also stand 0.045 apart from the plain land beyond the region.
 
 The script prints what it did: the cut wards and their shares, where the 2020 lines disagree with
 the resolution (Phường Bình Dương and Xã Bà Điểm; the resolution wins), districts whose area
@@ -156,7 +164,8 @@ smaller sizes from it; `maskable-512.png` has the outline at 77 % so it stays in
   (1 January 2021, Resolution 1111/NQ-UBTVQH14); Long Điền and Đất Đỏ as Long Đất (1 January 2025,
   Resolution 1256/NQ-UBTVQH15). Their areas are measured on this map.
 - **Provinces:** the 63 from the Vietnam 63 app (the same 2020 district boundaries, merged, with
-  Hoàng Sa and Trường Sa at their true positions); their areas and 2021 populations from the
+  Hoàng Sa and Trường Sa at their true positions). The data holds them all; the app shows only the
+  provinces around the city and draws the rest as plain land. Their areas and 2021 populations are from the
   Statistical Yearbook of Vietnam 2021. The 34 are grouped as in Resolution 202/2025/QH15, with the
   areas, names and status listed in the Vietnamese Provinces Database 5.2.0. As it records, Đồng
   Nai (30 April 2026), Quảng Ninh (1 September 2026) and Bắc Ninh (20 September 2026) have since
