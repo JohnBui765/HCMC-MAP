@@ -46,8 +46,9 @@ Address: **https://johnbui765.github.io/HCMC-MAP/**
   - **Highlight:** the picked place is marked with **Ping** (rings), **Glow** (a soft halo) or
     **Reticle** (a ring with ticks and a distance-and-bearing readout), whichever you choose in the
     card. It settles after 10 seconds, and is still from the start with Reduce Motion.
-  - **Export / Import.** Export makes a `.json` file of your tags and places (never the red dot); on
-    the iPhone it opens the Share sheet, so you can save it to Files or send it. Import adds the places
+  - **Export / Import.** Export makes a `.json` file of your tags and places (never the red dot): on a
+    laptop it downloads the file; on the iPhone it opens the Share sheet, so you can save it to Files or
+    send it (where a phone's browser won't share such a file, it downloads it). Import adds the places
     from such a file (or from a full backup), matches tags by name and skips places already there.
   - **Ask an AI about a place.** Type a place and tap Copy prompt (or Share the prompt… on the
     iPhone), send it to any AI app, copy its whole reply and paste it in the box. The prompt asks for
@@ -131,7 +132,7 @@ exactly as above.
 - **Laptop:** open the link in Chrome or Edge and click the install icon in the address bar.
 
 After the first visit it works without internet. A phone that has an older version installed picks
-up this one the next time the app is opened online (the cache is now `hcmc-map-v9`); progress is
+up this one the next time the app is opened online (the cache is now `hcmc-map-v10`); progress is
 kept.
 
 ## Your progress
@@ -142,7 +143,7 @@ device. "Reset this level" erases only the level on show.
 
 ## After editing any file
 
-Change `VERSION` at the top of `sw.js` (for example to `PREFIX + 'v10'`). Otherwise installed
+Change `VERSION` at the top of `sw.js` (for example to `PREFIX + 'v11'`). Otherwise installed
 copies keep showing the cached version.
 
 ## Rebuilding the map data

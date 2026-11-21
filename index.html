@@ -2386,14 +2386,23 @@ function selectPlace(id) {
   } else flyTo([w[0] - 200, w[1] - 200, 400, 400], 1.04);
   toast(d ? `${q.n} · ${fromDot(q)} from your red dot` : `${q.n} · ${whereIs(q)}`, 4200);
 }
-// Export: a .json file of your tags and places (not the red dot). On the iPhone, the Share sheet.
+// Export: a .json file of your tags and places (not the red dot). A laptop downloads it; a phone or
+// tablet opens the Share sheet (Save to Files, AirDrop…). Chrome and Edge say they can share a .json
+// file (canShare) and then refuse it (share), so a refused share downloads the file instead; closing
+// the sheet does nothing.
 function exportPlaces() {
   const data = JSON.stringify({ app: 'hcmc-map', kind: 'places', v: 1, exported: new Date().toISOString(), tags: store.tags, places: store.places }, null, 1);
   const name = `hcmc-map-places-${new Date().toISOString().slice(0, 10)}.json`;
+  const download = () => {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' })); a.download = name;
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  };
   let file = null; try { file = new File([data], name, { type: 'application/json' }); } catch (e) { file = null; }
-  if (file && navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: name }).catch(() => {}); return; }
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' })); a.download = name;
-  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  if (file && matchMedia('(pointer: coarse)').matches && navigator.canShare && navigator.canShare({ files: [file] })) {
+    navigator.share({ files: [file], title: name }).catch(e => { if (!e || e.name !== 'AbortError') download(); });
+    return;
+  }
+  download();
 }
 // Import: adds the places of such a file (or of a full backup) to yours; tags are matched by name.
 function importPlaces() {
