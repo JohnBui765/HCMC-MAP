@@ -34,15 +34,29 @@ Address: **https://johnbui765.github.io/HCMC-MAP/**
 - **Coordinates.** In Learn, the crosshair button above the eye opens one card:
   - **One box.** Type a coordinate as Apple Maps shows it (`10,77252° N, 106,69802° E`; dots, either
     order, or degrees, minutes and seconds as the Compass app shows them, work too), or paste an AI's
-    whole reply (below), and tap Show: the red dot goes there, the map flies to it and names the ward.
+    whole reply (below). **Show** puts your red dot there ("you", the anchor), flies to it and names
+    the ward. **Save place** keeps the point in your list instead, without moving the red dot (with an
+    empty box it saves the red dot itself).
+  - **Saved places, in tags.** Make tags with a name and one of eight colours (red is kept for your
+    dot), for example Food or Work. Each place shows its distance and compass bearing from your red
+    dot (`3.6 km · 46° NE`). Tap a place, in the list or on the map, and the map shows it and your red
+    dot together, joined by a dashed line. Each tag has an eye button to show or hide its places on
+    the map; tap a tag's name to rename it, change its colour or delete it. Up to 20 tags and 500
+    places.
+  - **Highlight:** the picked place is marked with **Ping** (rings), **Glow** (a soft halo) or
+    **Reticle** (a ring with ticks and a distance-and-bearing readout), whichever you choose in the
+    card. It settles after 10 seconds, and is still from the start with Reduce Motion.
+  - **Export / Import.** Export makes a `.json` file of your tags and places (never the red dot); on
+    the iPhone it opens the Share sheet, so you can save it to Files or send it. Import adds the places
+    from such a file (or from a full backup), matches tags by name and skips places already there.
   - **Ask an AI about a place.** Type a place and tap Copy prompt (or Share the prompt… on the
     iPhone), send it to any AI app, copy its whole reply and paste it in the box. The prompt asks for
     five lines (PLACE, COORDINATES, ADDRESS, NOTE, SOURCE); the box finds the coordinates even with
     markdown, bullets or a code block, and refuses a point outside the map. An AI's coordinates can be
     off, sometimes by kilometres.
-  - **Show markers / Hide markers.** The red dot, the four places and the + at their centre show on
-    the map only when switched on (off by default; showing a point switches them on). Never in
-    Practice.
+  - **Show markers / Hide markers.** The red dot, your saved places, the four places and the + at their
+    centre show on the map only when switched on (off by default; showing or saving a point switches
+    them on). Never in Practice.
   - **Four places to compare with:** Lái Thiêu Market (N), Cát Lái Port (E), Tôn Đức Thắng University
     (S) and Đầm Sen Park (W). They form a cross whose lines meet at the + (10,76639° N, 106,70005° E,
     0.7 km south-south-east of Bến Thành Market); from it, each is within 0.4° of due north, east,
@@ -50,7 +64,7 @@ Address: **https://johnbui765.github.io/HCMC-MAP/**
   - **True north.** The map's compass needle points to true north (on this map north leans at most
     0.36° from straight up anywhere in the city). On the iPhone, turn on Settings → Compass → Use True
     North: here magnetic north is 0.6° west of true north.
-  - The dot is kept on your phone only (and in your backup file).
+  - Your red dot, tags and places are kept on your phone only (and in your backup file).
 - **Light only.** The map stays light even when the phone or the browser is set to dark mode.
 - **Mist like Map Learning's.** Drawn by the graphics chip over the whole screen: clear over the city, the
   provinces around it and the sea within 60 km of them, covering everything from about 240 km out,
@@ -105,7 +119,7 @@ exactly as above.
 - **Laptop:** open the link in Chrome or Edge and click the install icon in the address bar.
 
 After the first visit it works without internet. A phone that has an older version installed picks
-up this one the next time the app is opened online (the cache is now `hcmc-map-v7`); progress is
+up this one the next time the app is opened online (the cache is now `hcmc-map-v8`); progress is
 kept.
 
 ## Your progress
@@ -116,7 +130,7 @@ device. "Reset this level" erases only the level on show.
 
 ## After editing any file
 
-Change `VERSION` at the top of `sw.js` (for example to `PREFIX + 'v8'`). Otherwise installed
+Change `VERSION` at the top of `sw.js` (for example to `PREFIX + 'v9'`). Otherwise installed
 copies keep showing the cached version.
 
 ## Rebuilding the map data

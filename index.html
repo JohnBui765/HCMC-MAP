@@ -334,6 +334,44 @@ table.stats { width: 100%; border-collapse: collapse; font-variant-numeric: tabu
 .ref .grow > span { display: block; }
 .ref .rc { font-size: 14px; font-variant-numeric: tabular-nums; }
 #coordForm { align-items: flex-start; }
+.subform { margin-top: 10px; padding: 10px; border-radius: 14px; background: var(--fill); }
+.subform .answer { margin-top: 0; }
+.subform .answer input { background: var(--surface); }
+.pick { flex: 1; min-width: 0; min-height: 44px; padding: 0 10px; border: 0; border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; }
+.loc { display: flex; gap: 10px; align-items: center; }
+.loc .small { display: block; }
+.tagrow { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.tagname { flex: 1; min-height: 36px; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 700; text-align: left; }
+.sw8 { flex: none; width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 0 2px #fff, 0 0 0 2.5px var(--hair); }
+.x.eye svg { width: 17px; height: 17px; }
+.prow { display: flex; align-items: center; gap: 6px; margin: 6px 0 0 22px; }
+.pgo { flex: 1; min-width: 0; display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 0; border-radius: 12px; background: var(--fill); color: var(--ink); font: inherit; text-align: left; }
+.pgo .grow > * { display: block; overflow-wrap: anywhere; }
+.sw6 { flex: none; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; }
+.palette { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.swatch { width: 34px; height: 34px; border: 0; border-radius: 50%; box-shadow: 0 0 0 2px #fff; }
+.swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px #fff, 0 0 0 4.5px var(--ink); }
+/* The picked place's highlight: Ping, Glow or Reticle, in its tag's colour */
+#hlsvg { overflow: visible; pointer-events: none; }
+#hl * { transform-box: fill-box; transform-origin: center; }
+#hl .ring { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; opacity: 0; animation: hlPing 1.5s cubic-bezier(.2, .6, .4, 1) infinite; }
+#hl .ring.r2 { animation-delay: .5s; }
+#hl .ring.r3 { animation-delay: 1s; }
+@keyframes hlPing { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(4.4); opacity: 0; } }
+#hl .glow { animation: hlGlow 2.2s ease-in-out infinite alternate; }
+@keyframes hlGlow { from { transform: scale(.8); opacity: .35; } to { transform: scale(1.35); opacity: .85; } }
+#hl .spin { animation: hlSpin 9s linear infinite; }
+@keyframes hlSpin { to { transform: rotate(360deg); } }
+#hl .lock { animation: hlLock .4s cubic-bezier(.2, .8, .3, 1) both; }
+@keyframes hlLock { from { transform: scale(1.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+#hl .read { font: 700 11px "Be Vietnam Pro", system-ui, sans-serif; fill: var(--ink); stroke: #fff; stroke-width: 3; paint-order: stroke; text-anchor: middle; }
+#hl.rest * { animation: none !important; }
+#hl.rest .ring { opacity: 0; }
+#hl.rest .ring.r1 { opacity: .55; transform: scale(2); }
+#hl.rest .glow { opacity: .6; transform: scale(1.1); }
+.fxrow { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
+.fxrow .seg { margin-top: 0; }
+.fold summary { margin: 20px 0 6px; color: var(--muted); font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; cursor: pointer; }
 #coordIn { flex: 1; min-width: 0; min-height: 44px; max-height: 38vh; padding: 10px 12px; border: 0; border-radius: 12px; background: var(--fill); color: var(--ink); font: inherit; font-size: 16px; line-height: 1.35; resize: none; overflow-y: auto; }
 /* ---------- The compass: tiny, top right, never in the way of a tap ---------- */
 #compass { position: fixed; z-index: 9; width: 34px; height: 34px; border-radius: 50%; pointer-events: none;
@@ -351,7 +389,7 @@ table.stats { width: 100%; border-collapse: collapse; font-variant-numeric: tabu
 <div id="stage" role="img" aria-label="Map of Hồ Chí Minh City's 168 wards and communes and the 38 districts they replaced, with the provinces around it">
   <canvas id="back"></canvas>
   <canvas id="backr"></canvas>
-  <div id="live"><canvas id="mapc"></canvas><svg id="fx" aria-hidden="true" style="display:none"><g id="fxw"></g></svg></div>
+  <div id="live"><canvas id="mapc"></canvas><svg id="fx" aria-hidden="true" style="display:none"><g id="fxw"></g></svg><svg id="hlsvg" aria-hidden="true" style="display:none"><defs><filter id="hlBlur" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="5"/></filter></defs><g id="hl"></g></svg></div>
   <div id="fog" class="pending"><canvas id="fogA"></canvas><canvas id="fogB"></canvas></div>
   <canvas id="fogGL" class="pending" aria-hidden="true"></canvas>
 </div>
@@ -588,7 +626,7 @@ const S = () => store.L[LEVEL];      // the level on show
           drawn for the camera "com"; while the camera moves it is scaled to follow
    #fog   two low-resolution fog bitmaps over everything */
 const $ = id => document.getElementById(id);
-const stage = $('stage'), backC = $('back'), live = $('live'), mapC = $('mapc'), fxSvg = $('fx'), fxG = $('fxw');
+const stage = $('stage'), backC = $('back'), live = $('live'), mapC = $('mapc'), fxSvg = $('fx'), fxG = $('fxw'), hlSvg = $('hlsvg'), hlG = $('hl');
 const fogW = $('fog'), fogA = $('fogA'), fogB = $('fogB');
 const NS = 'http://www.w3.org/2000/svg';
 function mk(tag, attrs, parent) {
@@ -624,6 +662,29 @@ REFS.forEach(q => { q.w = project(q.lon, q.lat); });
 // The centre of the cross: where the line from N to S meets the line from W to E. From here each
 // place is within 0.4° of due north, east, south or west (from Bến Thành Market, 0.7 km away, up to 6°).
 const CENTRE = { lat: 10.76639, lon: 106.70005 }, CW = project(CENTRE.lon, CENTRE.lat);
+// Saved places, in tags you name and colour (kept on this phone, and in the backup file). The red dot
+// is "you": every place is measured from it. Red is kept for the dot.
+const PALETTE = ['#1d6a98', '#2e8b57', '#d9822b', '#7b4fc4', '#c2417a', '#0e8f8f', '#8a5a2b', '#3f4b57'];
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+let selPlace = null;                   // the saved place picked: a dashed line joins it to the red dot
+function ensureTag() { if (!store.tags.length) store.tags.push({ id: uid(), n: 'Saved', c: PALETTE[0], hidden: false }); return store.tags[0]; }
+// Run on load, after Restore and when the card opens: ids are plain (they go into the page), colours
+// come from the palette, and a damaged file can't break the map.
+function cleanPlaces() {
+  const okId = x => typeof x === 'string' && /^[\w-]{1,40}$/.test(x), remap = new Map();
+  const tags = Array.isArray(store.tags) ? store.tags : [], places = Array.isArray(store.places) ? store.places : [];
+  store.tags = tags.filter(t => t && typeof t.n === 'string' && t.n.trim()).slice(0, 20).map(t => {
+    const id = okId(t.id) ? t.id : uid(); if (id !== t.id) remap.set(t.id, id);
+    return { id, n: t.n.trim().slice(0, 24), c: PALETTE.includes(t.c) ? t.c : PALETTE[0], hidden: !!t.hidden };
+  });
+  store.places = places.filter(q => q && typeof q.n === 'string' && Number.isFinite(q.lat) && Number.isFinite(q.lon)).slice(0, 500)
+    .map(q => ({ id: okId(q.id) ? q.id : uid(), n: (q.n.trim() || 'Place').slice(0, 60), lat: q.lat, lon: q.lon, tag: remap.has(q.tag) ? remap.get(q.tag) : q.tag, note: typeof q.note === 'string' ? q.note.slice(0, 200) : '', at: typeof q.at === 'string' ? q.at.slice(0, 10) : '' }));
+  if (store.dot && !(Array.isArray(store.dot) && store.dot.length === 2 && store.dot.every(Number.isFinite))) store.dot = null;
+  if (!store.dot || (store.dotInfo && (typeof store.dotInfo !== 'object' || typeof store.dotInfo.n !== 'string'))) store.dotInfo = null;
+  if (store.dotInfo && typeof store.dotInfo.note !== 'string') store.dotInfo.note = '';
+  if (store.places.some(q => !store.tags.some(t => t.id === q.tag))) { const t = ensureTag(); store.places.forEach(q => { if (!store.tags.some(x => x.id === q.tag)) q.tag = t.id; }); }
+}
+cleanPlaces();
 const kmBetween = (a, b) => {
   const r = Math.PI / 180, h = Math.sin((b.lat - a.lat) * r / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin((b.lon - a.lon) * r / 2) ** 2;
   return 2 * 6371.0088 * Math.asin(Math.sqrt(h));
@@ -664,6 +725,10 @@ function readCoord(text) {
 const fmtDec = p => `${p.lat.toFixed(5).replace('.', ',')}° N, ${p.lon.toFixed(5).replace('.', ',')}° E`;
 const dms = (x, h) => { let s = Math.round(x * 3600); const d = Math.floor(s / 3600); s -= d * 3600; const m = Math.floor(s / 60); s -= m * 60; return `${d}°${String(m).padStart(2, '0')}′${String(s).padStart(2, '0')}″ ${h}`; };
 const fmtDMS = p => `${dms(p.lat, 'N')} ${dms(p.lon, 'E')}`;
+const point8 = g => ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(g / 45) % 8];
+const fmtKm = k => (k < 10 ? k.toFixed(1) : String(Math.round(k))) + ' km';
+const myDot = () => (store.dot ? { lat: store.dot[0], lon: store.dot[1] } : null);
+const fromDot = q => { const d = myDot(); if (!d) return ''; const g = bearing(d, q); return `${fmtKm(kmBetween(d, q))} · ${Math.round(g)}° ${point8(g)}`; };
 const onMap = p => { const w = project(p.lon, p.lat); return !p.off && w[0] >= LIMIT[0] && w[1] >= LIMIT[1] && w[0] <= LIMIT[0] + LIMIT[2] && w[1] <= LIMIT[1] + LIMIT[3]; };
 // The compass bearing from a to b: degrees clockwise from true north.
 const bearing = (a, b) => {
@@ -906,7 +971,7 @@ function sizeLive() {
   Object.assign(live.style, { left: -pad.x + 'px', top: -pad.y + 'px', width: W + 'px', height: H + 'px', transformOrigin: `${pad.x}px ${pad.y}px` });
   mapC.width = Math.round(W * dpr); mapC.height = Math.round(H * dpr);
   mapC.style.width = W + 'px'; mapC.style.height = H + 'px';
-  fxSvg.setAttribute('width', W); fxSvg.setAttribute('height', H);
+  fxSvg.setAttribute('width', W); fxSvg.setAttribute('height', H); hlSvg.setAttribute('width', W); hlSvg.setAttribute('height', H);
   if (fogGL) fogGL.size();
 }
 
@@ -1049,6 +1114,36 @@ function renderMain() {
   drawDots(mctx, L.dots);
   drawLabels(mctx, L.labels);
   drawRings(mctx);
+  updateHL();
+}
+// The picked place's highlight, in an SVG layer that moves with the map: Ping, Glow or Reticle. It
+// settles after 10 s, and is still from the start with Reduce Motion.
+let hlKey = '', hlRest = 0;
+const FX_NAMES = { ping: 'Ping', glow: 'Glow', reticle: 'Reticle' };
+function updateHL() {
+  const q = selPlace && view === 'learn' && !session && store.set.marks ? store.places.find(x => x.id === selPlace) : null;
+  const t = q && store.tags.find(x => x.id === q.tag);
+  if (!q || !t || t.hidden) { if (hlKey) { hlKey = ''; hlG.innerHTML = ''; hlSvg.style.display = 'none'; clearTimeout(hlRest); } return; }
+  const fx = FX_NAMES[store.set.fx] ? store.set.fx : 'ping', d = myDot(), c = t.c;
+  const key = `${q.id}|${fx}|${c}|${d ? store.dot.join() : ''}`;
+  if (key !== hlKey) {
+    hlKey = key; clearTimeout(hlRest);
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    hlG.setAttribute('class', still ? 'rest' : '');
+    if (fx === 'ping') hlG.innerHTML = `<circle r="11" fill="${c}" opacity=".16"/>` + [1, 2, 3].map(i => `<circle class="ring r${i}" r="7" stroke="${c}"/>`).join('');
+    else if (fx === 'glow') hlG.innerHTML = `<circle class="glow" r="14" fill="${c}" filter="url(#hlBlur)"/><circle r="9.5" fill="none" stroke="#fff" stroke-width="2.6"/>`;
+    else {
+      const ticks = Array.from({ length: 12 }, (_, i) => { const a = i * Math.PI / 6, r2 = i % 3 ? 18.5 : 21; return `<line x1="${(Math.sin(a) * 15).toFixed(1)}" y1="${(-Math.cos(a) * 15).toFixed(1)}" x2="${(Math.sin(a) * r2).toFixed(1)}" y2="${(-Math.cos(a) * r2).toFixed(1)}"/>`; }).join('');
+      const B = 26, L = 7, br = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sy]) => `<path d="M${sx * B} ${sy * (B - L)}V${sy * B}H${sx * (B - L)}"/>`).join('');
+      const g = d ? bearing(d, q) : 0;
+      hlG.innerHTML = `<g class="spin" stroke="${c}" stroke-width="1.4" fill="none"><circle r="15"/>${ticks}</g><g class="lock" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round">${br}</g>`
+        + (d ? `<text class="read" y="-34">${fmtKm(kmBetween(d, q))} · ${Math.round(g)}°</text>` : '');
+    }
+    hlSvg.style.display = '';
+    if (!still) hlRest = setTimeout(() => hlG.setAttribute('class', 'rest'), 10000);
+  }
+  const w = project(q.lon, q.lat);
+  hlG.setAttribute('transform', `translate(${(com.x + pad.x + com.k * w[0]).toFixed(1)},${(com.y + pad.y + com.k * w[1]).toFixed(1)})`);
 }
 
 /* ---------- 5. Labels: placed so that none overlap; what doesn't fit waits for more zoom ---------- */
@@ -1096,6 +1191,16 @@ function layoutLabels() {
       taken.push([x - 10, y - 10, x + 10, y + 10]); dots.push({ x, y, kind: 'ref', d: q.d });
       if (k >= 0.045) put(make(q.n, F.ref, 11.5, x + 13, y, 'left', V.ink, V.paper));
     }
+    let line = null;
+    for (const q of store.places) {
+      const t = store.tags.find(x => x.id === q.tag); if (!t || t.hidden) continue;
+      const pw = project(q.lon, q.lat), x = X(pw[0]), y = Y(pw[1]), sel = q.id === selPlace;
+      if (sel && dw) line = { kind: 'line', x1: X(dw[0]), y1: Y(dw[1]), x2: x, y2: y };
+      if (!onCanvas(x, y)) continue;
+      taken.push([x - 7, y - 7, x + 7, y + 7]); dots.push({ x, y, kind: 'place', c: t.c, sel });
+      put(make(q.n, F.ref, 11, x + 9, y, 'left', V.ink, V.paper), sel);
+    }
+    if (line) dots.unshift(line);
     if (dot) dots.push(dot);
   }
 
@@ -1165,6 +1270,16 @@ function drawDots(ctx, dots) {
       ctx.beginPath(); ctx.arc(d.x, d.y, 8.5, 0, Math.PI * 2); ctx.fillStyle = V.ink; ctx.fill();
       ctx.lineWidth = 1.5; ctx.strokeStyle = V.paper; ctx.stroke();
       ctx.font = `700 10px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = V.paper; ctx.fillText(d.d, d.x, d.y + .5);
+      continue;
+    }
+    if (d.kind === 'line') {            // from the red dot to the picked place
+      ctx.save(); ctx.setLineDash([6, 5]); ctx.lineWidth = 2; ctx.strokeStyle = '#e5484d'; ctx.globalAlpha = .9;
+      ctx.beginPath(); ctx.moveTo(d.x1, d.y1); ctx.lineTo(d.x2, d.y2); ctx.stroke(); ctx.restore();
+      continue;
+    }
+    if (d.kind === 'place') {           // a saved place, in its tag's colour
+      ctx.beginPath(); ctx.arc(d.x, d.y, d.sel ? 7 : 5.2, 0, Math.PI * 2); ctx.fillStyle = d.c; ctx.fill();
+      ctx.lineWidth = d.sel ? 2.4 : 1.8; ctx.strokeStyle = '#fff'; ctx.stroke();
       continue;
     }
     if (d.kind === 'centre') {          // the centre of the cross
@@ -1938,6 +2053,11 @@ function tapIsAnswer() {
   return !(session.cur && (session.cur.type === 'meet' || session.cur.type === 'name'));
 }
 function handleMapTap(w) {
+  if (view === 'learn' && !session && store.set.marks) {
+    const hit = placeAt(w);
+    if (hit) return selectPlace(hit.id);
+    if (selPlace) { selPlace = null; paint(); }
+  }
   let code = provinceAt(w);
   const picks = !session || tapIsAnswer();
   // Outside a practice round, a tap inside a province (and not inside the city) is that province's.
@@ -2092,20 +2212,95 @@ function setClean(on) {
 }
 $('clean').onclick = () => setClean(!cleanOn);
 $('coordb').onclick = () => showCoords();
+function whereIs(q) { const w = project(q.lon, q.lat), c = provinceAt(w), sh = c ? null : shapeAt(w); return c ? nm(BY[c]) : sh ? provOfShape(sh).full : 'beyond the provinces on this map'; }
+function placeAt(w) {                   // a shown saved place under the finger
+  let best = null, bd = 18;
+  for (const q of store.places) {
+    const t = store.tags.find(x => x.id === q.tag); if (!t || t.hidden) continue;
+    const pw = project(q.lon, q.lat), dpx = Math.hypot(pw[0] - w[0], pw[1] - w[1]) * cam.k;
+    if (dpx < bd) { bd = dpx; best = q; }
+  }
+  return best;
+}
+// A saved place picked: the map shows it and the red dot together, joined by a dashed line.
+function selectPlace(id) {
+  const q = store.places.find(x => x.id === id); if (!q) return;
+  const t = store.tags.find(x => x.id === q.tag), d = myDot(), w = project(q.lon, q.lat);
+  selPlace = id; store.set.marks = true; if (t) t.hidden = false; save(); paint(); closeSheet();
+  if (d) {
+    const a = project(d.lon, d.lat), bw = Math.max(Math.abs(a[0] - w[0]) + 300, 400), bh = Math.max(Math.abs(a[1] - w[1]) + 300, 400);
+    flyTo([(a[0] + w[0]) / 2 - bw / 2, (a[1] + w[1]) / 2 - bh / 2, bw, bh], 1.1);
+  } else flyTo([w[0] - 200, w[1] - 200, 400, 400], 1.04);
+  toast(d ? `${q.n} · ${fromDot(q)} from your red dot` : `${q.n} · ${whereIs(q)}`, 4200);
+}
+// Export: a .json file of your tags and places (not the red dot). On the iPhone, the Share sheet.
+function exportPlaces() {
+  const data = JSON.stringify({ app: 'hcmc-map', kind: 'places', v: 1, exported: new Date().toISOString(), tags: store.tags, places: store.places }, null, 1);
+  const name = `hcmc-map-places-${new Date().toISOString().slice(0, 10)}.json`;
+  let file = null; try { file = new File([data], name, { type: 'application/json' }); } catch (e) { file = null; }
+  if (file && navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: name }).catch(() => {}); return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' })); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+// Import: adds the places of such a file (or of a full backup) to yours; tags are matched by name.
+function importPlaces() {
+  const i = document.createElement('input'); i.type = 'file'; i.accept = 'application/json,.json';
+  i.onchange = () => {
+    const f = i.files[0]; if (!f) return;
+    f.text().then(txt => {
+      const s = JSON.parse(txt);
+      if (!s || s.app !== 'hcmc-map' || !Array.isArray(s.places)) throw new Error('not a places file');
+      const ids = new Map(); let nt = 0, np = 0, skip = 0;
+      for (const t of Array.isArray(s.tags) ? s.tags : []) {
+        const tn = t && typeof t.n === 'string' ? t.n.trim().slice(0, 24) : ''; if (!tn) continue;
+        let m = store.tags.find(x => x.n.toLowerCase() === tn.toLowerCase());
+        if (!m && store.tags.length < 20) { m = { id: uid(), n: tn, c: PALETTE.includes(t.c) ? t.c : PALETTE[store.tags.length % PALETTE.length], hidden: false }; store.tags.push(m); nt++; }
+        if (m) ids.set(t.id, m.id);
+      }
+      for (const q of s.places) {
+        if (!q || typeof q.n !== 'string' || !Number.isFinite(q.lat) || !Number.isFinite(q.lon) || !onMap(q) || store.places.length >= 500) { skip++; continue; }
+        const pn = (q.n.trim() || `Place ${store.places.length + 1}`).slice(0, 60);
+        if (store.places.some(x => (x.n === pn || !q.n.trim()) && kmBetween(x, q) < 0.01)) { skip++; continue; }
+        store.places.push({ id: uid(), n: pn, lat: q.lat, lon: q.lon, tag: ids.get(q.tag) || ensureTag().id, note: typeof q.note === 'string' ? q.note.slice(0, 200) : '', at: typeof q.at === 'string' ? q.at.slice(0, 10) : '' });
+        np++;
+      }
+      save(); paint(); showCoords();
+      toast(`Imported ${np} place${np === 1 ? '' : 's'}${nt ? ` and ${nt} tag${nt === 1 ? '' : 's'}` : ''}${skip ? ` (${skip} already here or not on this map)` : ''}`, 3600);
+    }).catch(() => toast('That file is not a places file from this app', 3200));
+  };
+  i.click();
+}
 function showCoords() {
-  const d = store.dot ? { lat: store.dot[0], lon: store.dot[1] } : null, info = d && store.dotInfo;
-  openSheet(`<div class="row drag-row"><div class="grow"><h2>Coordinates</h2><div class="sub">Type one as Apple Maps shows it, or paste an AI’s reply</div></div>${closeBtn('data-close')}</div>
+  cleanPlaces();
+  const d = myDot(), info = d && store.dotInfo, marks = !!store.set.marks;
+  const groups = store.tags.map(t => {
+    const ps = store.places.filter(q => q.tag === t.id);
+    return `<div class="tagrow"><span class="sw8" style="background:${t.c}"></span><button type="button" class="tagname" data-edit="${t.id}">${esc(t.n)} <span class="small">${ps.length}</span></button><button type="button" class="x eye" data-eye="${t.id}" aria-pressed="${!t.hidden}" aria-label="${t.hidden ? 'Show' : 'Hide'} ${esc(t.n)} on the map">${t.hidden ? EYE_OFF : EYE}</button></div>`
+      + ps.map(q => `<div class="prow"><button type="button" class="pgo" data-go="${q.id}"><span class="sw6" style="background:${t.c}"></span><span class="grow"><b>${esc(q.n)}</b><span class="small">${esc(d ? fromDot(q) : whereIs(q))}</span></span></button><button type="button" class="x" data-del="${q.id}" aria-label="Delete ${esc(q.n)}">${XICON}</button></div>`).join('');
+  }).join('');
+  openSheet(`<div class="row drag-row"><div class="grow"><h2>Coordinates</h2><div class="sub">Show puts your red dot there · Save place keeps it in a tag</div></div>${closeBtn('data-close')}</div>
     <form class="answer" id="coordForm" autocomplete="off"><textarea id="coordIn" rows="1" inputmode="text" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Coordinates, or an AI’s reply" placeholder="10,77252° N, 106,69802° E"></textarea><button type="submit" class="btn primary">Show</button></form>
-    ${d ? `<p class="small">Red dot: ${info ? esc(info.n) + ', ' : ''}${fmtDec(d)}${info && info.note ? '. ' + esc(info.note) : ''}</p>` : ''}
-    <div class="btnrow"><button type="button" class="btn" id="marksBtn" aria-pressed="${!!store.set.marks}">${store.set.marks ? 'Hide markers' : 'Show markers'}</button>${d ? '<button type="button" class="btn" id="coordClr">Remove the dot</button>' : ''}</div>
+    <div class="btnrow"><button type="button" class="btn" id="saveOpen">Save place</button><button type="button" class="btn" id="marksBtn" aria-pressed="${marks}">${marks ? 'Hide markers' : 'Show markers'}</button></div>
+    <div id="saveForm" class="subform" hidden><div class="answer"><input id="saveName" type="text" maxlength="60" autocorrect="off" spellcheck="false" enterkeyhint="done" aria-label="Name of the place" placeholder="Name"></div>
+      <div class="btnrow"><select id="saveTag" class="pick" aria-label="Tag"></select><button type="button" class="btn primary" id="saveGo">Save</button><button type="button" class="btn" id="saveNo">Cancel</button></div></div>
+    ${d ? `<h3>You: the red dot</h3><div class="loc"><span class="grow">${info ? `<b>${esc(info.n)}</b> · ` : ''}${fmtDec(d)}<span class="small">${esc(whereIs(d))}</span></span><button type="button" class="btn" id="coordClr">Remove</button></div>` : ''}
+    <h3>Saved places (${store.places.length})</h3>
+    ${store.places.length ? `<div class="fxrow"><span class="small">Highlight</span><div class="seg" role="group" aria-label="Highlight for the picked place">${Object.keys(FX_NAMES).map(f => `<button type="button" data-fx="${f}" aria-pressed="${(FX_NAMES[store.set.fx] ? store.set.fx : 'ping') === f}">${FX_NAMES[f]}</button>`).join('')}</div></div>` : ''}
+    ${groups || '<p class="small">None yet. Type a coordinate or paste an AI’s reply above, then tap Save place.</p>'}
+    <div id="tagForm" class="subform" hidden><div class="answer"><input id="tagName" type="text" maxlength="24" autocorrect="off" spellcheck="false" enterkeyhint="done" aria-label="Tag name" placeholder="Tag name, e.g. Food"></div>
+      <div class="palette">${PALETTE.map(c => `<button type="button" class="swatch" data-c="${c}" style="background:${c}" aria-label="Colour ${c}"></button>`).join('')}</div>
+      <div class="btnrow"><button type="button" class="btn primary" id="tagGo">Add tag</button><button type="button" class="btn" id="tagDel" hidden>Delete tag</button><button type="button" class="btn" id="tagNo">Cancel</button></div></div>
+    <div class="btnrow"><button type="button" class="btn" id="tagNew">New tag</button><button type="button" class="btn" id="plExport"${store.places.length ? '' : ' disabled'}>Export</button><button type="button" class="btn" id="plImport">Import</button></div>
     <h3>Ask an AI about a place</h3>
     <form class="answer" id="aiForm" autocomplete="off"><input id="aiPlace" type="text" inputmode="text" autocorrect="off" spellcheck="false" enterkeyhint="done" aria-label="Place to ask about" placeholder="e.g. Landmark 81"><button type="submit" class="btn">Copy prompt</button></form>
     ${navigator.share ? '<div class="btnrow"><button type="button" class="btn" id="aiShare">Share the prompt…</button></div>' : ''}
-    <p class="small">Send the prompt to any AI app, copy its whole reply, paste it in the box above and tap Show. An AI’s coordinates can be off, sometimes by kilometres.</p>
-    <h3>Four places to compare with</h3>
+    <p class="small">Send the prompt to any AI app, copy its whole reply and paste it in the box above. An AI’s coordinates can be off, sometimes by kilometres.</p>
+    <details class="fold"><summary>Four places to compare with</summary>
     <div class="refs">${REFS.map((q, i) => `<button type="button" class="ref" data-ref="${i}"><span class="rb">${q.d}</span><span class="grow"><b>${esc(q.n)}</b><span class="small">${q.dir} of the centre +, ${kmBetween(CENTRE, q).toFixed(1)} km, bearing ${bearing(CENTRE, q).toFixed(1)}°</span><span class="rc">${fmtDec(q)}</span><span class="rc">${fmtDMS(q)}</span></span></button>`).join('')}</div>
-    <p class="small">The + is the centre of the cross, where the line from N to S meets the line from W to E: ${fmtDec(CENTRE)}, 0.7 km south-south-east of Bến Thành Market. A bigger first number (latitude) is further north; a bigger second number (longitude) is further east. On your iPhone, turn on Settings → Compass → Use True North: here magnetic north is 0.6° west of true north. Your dot is kept on this phone only.</p>`, true);
+    <p class="small">The + is the centre of the cross, where the line from N to S meets the line from W to E: ${fmtDec(CENTRE)}, 0.7 km south-south-east of Bến Thành Market. A bigger first number (latitude) is further north; a bigger second number (longitude) is further east. On your iPhone, turn on Settings → Compass → Use True North: here magnetic north is 0.6° west of true north.</p></details>
+    <p class="small">Your red dot, tags and places are kept on this phone only. Export makes a file of your tags and places (not the red dot).</p>`, true);
   sheetBody.querySelector('[data-close]').onclick = closeSheet;
+  const redraw = () => { const st = sheetBody.scrollTop; showCoords(); sheetBody.scrollTop = st; };
   const box = $('coordIn'), grow = () => { box.style.height = 'auto'; box.style.height = Math.min(box.scrollHeight + 2, innerHeight * .38) + 'px'; };
   box.addEventListener('input', grow); grow();
   box.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); showCoord(box.value); } });
@@ -2115,12 +2310,80 @@ function showCoords() {
     const b = $('marksBtn'); b.textContent = store.set.marks ? 'Hide markers' : 'Show markers'; b.setAttribute('aria-pressed', String(store.set.marks));
   };
   const clr = $('coordClr');
-  if (clr) clr.onclick = () => { store.dot = null; store.dotInfo = null; save(); paint(); closeSheet(); toast('Dot removed'); };
+  if (clr) clr.onclick = () => { store.dot = null; store.dotInfo = null; save(); paint(); redraw(); toast('Red dot removed'); };
+  // Save place: the point in the box, or the red dot when the box is empty (read again at Save).
+  const pointToSave = () => {
+    const t = box.value.trim();
+    if (t) { const res = readAiReply(t); return res; }
+    const dd = myDot(), inf = dd && store.dotInfo;
+    return dd ? { lat: dd.lat, lon: dd.lon, n: inf ? inf.n : '', note: inf ? inf.note : '' } : { err: 'Type a coordinate or paste an AI’s reply first' };
+  };
+  $('saveOpen').onclick = () => {
+    const pt = pointToSave(); if (pt.err) return toast(pt.err, 3200);
+    const last = store.tags.some(x => x.id === store.set.lastTag) ? store.set.lastTag : store.tags.length ? store.tags[0].id : '';
+    $('saveTag').innerHTML = store.tags.length ? store.tags.map(x => `<option value="${x.id}"${x.id === last ? ' selected' : ''}>${esc(x.n)}</option>`).join('') : '<option value="">Saved</option>';
+    $('saveName').value = pt.n || ''; $('saveForm').hidden = false; $('saveName').focus();
+  };
+  $('saveNo').onclick = () => { $('saveForm').hidden = true; };
+  $('saveGo').onclick = () => {
+    const pt = pointToSave(); if (pt.err) return toast(pt.err, 3200);
+    if (store.places.length >= 500) return toast('Your list is full (500 places)', 3000);
+    const n = $('saveName').value.trim().slice(0, 60) || `Place ${store.places.length + 1}`;
+    if (store.places.some(x => x.n === n && kmBetween(x, pt) < 0.01)) return toast('Already saved', 2400);
+    const tag = store.tags.some(x => x.id === $('saveTag').value) ? $('saveTag').value : ensureTag().id;
+    store.places.push({ id: uid(), n, lat: +pt.lat.toFixed(6), lon: +pt.lon.toFixed(6), tag, note: pt.note || '', at: new Date().toISOString().slice(0, 10) });
+    store.set.lastTag = tag; store.set.marks = true; save(); paint(); redraw();
+    toast(`Saved to ${(store.tags.find(x => x.id === tag) || { n: 'your places' }).n}`, 2400);
+  };
+  // Tags: add, rename or recolour, delete (with its places), and show or hide each on the map.
+  let editing = null, colour = PALETTE[0];
+  const pickColour = c => { colour = c; sheetBody.querySelectorAll('.swatch').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.c === c))); };
+  sheetBody.querySelectorAll('.swatch').forEach(b => b.onclick = () => pickColour(b.dataset.c));
+  const openTagForm = t => {
+    editing = t || null; $('tagName').value = t ? t.n : ''; $('tagGo').textContent = t ? 'Save tag' : 'Add tag'; $('tagDel').hidden = !t;
+    pickColour(t ? t.c : (PALETTE.find(c => !store.tags.some(x => x.c === c)) || PALETTE[0])); $('tagForm').hidden = false; $('tagName').focus();
+  };
+  $('tagNew').onclick = () => { if (store.tags.length >= 20) return toast('Up to 20 tags', 2400); openTagForm(null); };
+  sheetBody.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openTagForm(store.tags.find(x => x.id === b.dataset.edit)));
+  $('tagNo').onclick = () => { $('tagForm').hidden = true; editing = null; };
+  $('tagGo').onclick = () => {
+    const n = $('tagName').value.trim().slice(0, 24);
+    if (!n) return toast('Give the tag a name', 2400);
+    if (store.tags.some(x => x !== editing && x.n.toLowerCase() === n.toLowerCase())) return toast('There is already a tag with that name', 2600);
+    if (editing) { editing.n = n; editing.c = colour; } else store.tags.push({ id: uid(), n, c: colour, hidden: false });
+    save(); paint(); redraw();
+  };
+  $('tagDel').onclick = () => {
+    const t = editing; if (!t) return;
+    const k = store.places.filter(x => x.tag === t.id).length;
+    if (!confirmInline('tag' + t.id, k ? `Tap Delete tag again to delete it and its ${k} place${k > 1 ? 's' : ''}` : 'Tap Delete tag again to delete it')) return;
+    store.tags = store.tags.filter(x => x !== t); store.places = store.places.filter(x => x.tag !== t.id);
+    if (selPlace && !store.places.some(x => x.id === selPlace)) selPlace = null;
+    save(); paint(); redraw();
+  };
+  sheetBody.querySelectorAll('[data-eye]').forEach(b => b.onclick = () => {
+    const t = store.tags.find(x => x.id === b.dataset.eye); if (!t) return;
+    t.hidden = !t.hidden; save(); paint();
+    b.innerHTML = t.hidden ? EYE_OFF : EYE; b.setAttribute('aria-pressed', String(!t.hidden)); b.setAttribute('aria-label', `${t.hidden ? 'Show' : 'Hide'} ${t.n} on the map`);
+  });
+  sheetBody.querySelectorAll('[data-go]').forEach(b => b.onclick = () => selectPlace(b.dataset.go));
+  sheetBody.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+    const q = store.places.find(x => x.id === b.dataset.del); if (!q) return;
+    if (!confirmInline('pl' + q.id, `Tap ✕ again to delete ${q.n}`)) return;
+    store.places = store.places.filter(x => x !== q); if (selPlace === q.id) selPlace = null;
+    save(); paint(); redraw();
+  });
+  $('plExport').onclick = exportPlaces; $('plImport').onclick = importPlaces;
+  sheetBody.querySelectorAll('[data-fx]').forEach(b => b.onclick = () => {
+    store.set.fx = b.dataset.fx; save(); paint();
+    sheetBody.querySelectorAll('[data-fx]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    if (!selPlace) toast(`${FX_NAMES[b.dataset.fx]}: it shows when you pick a place`, 2600);
+  });
+  sheetBody.querySelectorAll('[data-ref]').forEach(b => b.onclick = () => { const q = REFS[+b.dataset.ref]; closeSheet(); flyTo([q.w[0] - 200, q.w[1] - 200, 400, 400], 1.04); });
   const prompt = () => { const q = $('aiPlace').value.trim(); if (!q) { toast('Type a place first'); return null; } return aiPrompt(q); };
   $('aiForm').onsubmit = e => { e.preventDefault(); const t = prompt(); if (t) copyText(t).then(ok => toast(ok ? 'Prompt copied. Paste it into any AI app.' : 'Couldn’t copy. Try Share.', 3200)); };
   const share = $('aiShare');
   if (share) share.onclick = () => { const t = prompt(); if (t) navigator.share({ text: t }).catch(() => {}); };
-  sheetBody.querySelectorAll('[data-ref]').forEach(b => b.onclick = () => { const q = REFS[+b.dataset.ref]; closeSheet(); flyTo([q.w[0] - 200, q.w[1] - 200, 400, 400], 1.04); });
 }
 // A typed coordinate, or an AI's reply: the red dot goes there.
 function showCoord(text) {
@@ -2457,7 +2720,7 @@ function backup() {
 }
 function restore() {
   const i = document.createElement('input'); i.type = 'file'; i.accept = 'application/json,.json';
-  i.onchange = () => { const f = i.files[0]; if (!f) return; f.text().then(t => { const s = migrate(JSON.parse(t)); if (!s) throw 0; store = { ...store, ...s, set: { ...DEFAULT_SET, ...(s.set || {}) } }; save(); switchLevel(store.lv); closeSheet(); showProgress(); toast('Progress restored'); }).catch(() => toast('That file is not an HCMC Map backup')); };
+  i.onchange = () => { const f = i.files[0]; if (!f) return; f.text().then(t => { const s = migrate(JSON.parse(t)); if (!s) throw 0; store = { ...store, ...s, set: { ...DEFAULT_SET, ...(s.set || {}) } }; cleanPlaces(); selPlace = null; save(); switchLevel(store.lv); closeSheet(); showProgress(); toast('Progress restored'); }).catch(() => toast('That file is not an HCMC Map backup')); };
   i.click();
 }
 function showSources() {
@@ -2474,7 +2737,7 @@ function showSources() {
   <p><b>Mist:</b> as in Map Learning, drawn by the graphics chip over the whole screen: clear over the city, the provinces around it and the sea within 60 km of them, thickening beyond and covering everything from about 240 km out.</p>
   <p><b>Numbering:</b> former districts in the order of the national statistical code list; wards by former district, then by their official code.</p>
   <p><b>Around Vietnam:</b> the neighbouring countries from Natural Earth (public domain). Biển Đông is labelled East Sea, the name Vietnam uses in English.</p>
-  <p><b>Coordinates:</b> the four places to compare with are from OpenStreetMap (© OpenStreetMap contributors, ODbL) and Wikidata (CC0). The box reads coordinates as Apple Maps writes them (10,77252° N, 106,69802° E), with dots, or in degrees, minutes and seconds as the Compass app shows them. They form a cross: from the + where its lines meet (10,76639° N, 106,70005° E), each place is within 0.4° of due north, east, south or west. The markers show only when you switch them on. The box also reads an AI’s reply to the prompt the card writes; the app itself sends nothing anywhere. Magnetic north here is 0.6° west of true north (World Magnetic Model 2025). Your dot is kept on your phone only.</p>
+  <p><b>Coordinates:</b> the four places to compare with are from OpenStreetMap (© OpenStreetMap contributors, ODbL) and Wikidata (CC0). The box reads coordinates as Apple Maps writes them (10,77252° N, 106,69802° E), with dots, or in degrees, minutes and seconds as the Compass app shows them. They form a cross: from the + where its lines meet (10,76639° N, 106,70005° E), each place is within 0.4° of due north, east, south or west. The markers show only when you switch them on. The box also reads an AI’s reply to the prompt the card writes; the app itself sends nothing anywhere. Magnetic north here is 0.6° west of true north (World Magnetic Model 2025). Saved places sit in tags you name and colour; each shows its distance and bearing from your red dot. A picked place is highlighted with Ping, Glow or Reticle (your choice), still after 10 seconds or with Reduce Motion. Your red dot, tags and places are kept on your phone only (and in your backup file); Export makes a .json file of the tags and places (not the red dot), and Import adds the places from such a file.</p>
   <p><b>Typeface:</b> Be Vietnam Pro (SIL Open Font License).</p>`, true);
   sheetBody.querySelector('[data-close]').onclick = progressDetails;
 }
