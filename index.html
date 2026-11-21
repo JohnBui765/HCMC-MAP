@@ -333,6 +333,8 @@ table.stats { width: 100%; border-collapse: collapse; font-variant-numeric: tabu
 .ref .rb { flex: none; width: 26px; height: 26px; margin-top: 1px; border-radius: 13px; display: grid; place-items: center; background: var(--ink); color: var(--surface); font-size: 13px; font-weight: 700; }
 .ref .grow > span { display: block; }
 .ref .rc { font-size: 14px; font-variant-numeric: tabular-nums; }
+#coordForm { align-items: flex-start; }
+#coordIn { flex: 1; min-width: 0; min-height: 44px; max-height: 38vh; padding: 10px 12px; border: 0; border-radius: 12px; background: var(--fill); color: var(--ink); font: inherit; font-size: 16px; line-height: 1.35; resize: none; overflow-y: auto; }
 /* ---------- The compass: tiny, top right, never in the way of a tap ---------- */
 #compass { position: fixed; z-index: 9; width: 34px; height: 34px; border-radius: 50%; pointer-events: none;
   right: calc(env(safe-area-inset-right, 0px) + 16px); top: calc(max(var(--slip-b, 0px), env(safe-area-inset-top, 0px)) + 10px);
@@ -619,24 +621,92 @@ const REFS = [
   { d: 'W', dir: 'West', n: 'Đầm Sen Park', lat: 10.76611, lon: 106.63806 },                  // Wikidata Q2056423
 ];
 REFS.forEach(q => { q.w = project(q.lon, q.lat); });
+// The centre of the cross: where the line from N to S meets the line from W to E. From here each
+// place is within 0.4° of due north, east, south or west (from Bến Thành Market, 0.7 km away, up to 6°).
+const CENTRE = { lat: 10.76639, lon: 106.70005 }, CW = project(CENTRE.lon, CENTRE.lat);
 const kmBetween = (a, b) => {
   const r = Math.PI / 180, h = Math.sin((b.lat - a.lat) * r / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin((b.lon - a.lon) * r / 2) ** 2;
   return 2 * 6371.0088 * Math.asin(Math.sqrt(h));
 };
-// "10,77252° N, 106,69802° E", as Apple Maps writes it; also with dots, without ° or the letters,
-// or in degrees, minutes and seconds as the Compass app shows them (10°46′21″ N 106°41′53″ E).
+// A coordinate in any common form: "10,77252° N, 106,69802° E" as Apple Maps writes it, dots,
+// either order, degrees and minutes (and seconds) as the Compass app shows them, or plain numbers.
+// Remarks in brackets and stray numbers beside a pair of decimals are ignored.
 function readCoord(text) {
-  const t = String(text), v = (t.match(/\d+(?:[.,]\d+)?/g) || []).map(x => parseFloat(x.replace(',', '.')));
-  const deg = a => a.reduce((s, x, i) => s + x / 60 ** i, 0), mins = a => a.slice(1).every(x => x < 60);
-  const parts = v.length === 2 ? [[v[0]], [v[1]]] : v.length === 4 ? [v.slice(0, 2), v.slice(2)] : v.length === 6 ? [v.slice(0, 3), v.slice(3)] : null;
-  if (!parts || !parts.every(mins)) return null;
-  let lat = deg(parts[0]), lon = deg(parts[1]);
+  const t = String(text).replace(/\([^)]*\)/g, ' ').replace(/[′’‘`]/g, "'").replace(/''/g, '"').replace(/[″“”]/g, '"');
+  const T = [...t.matchAll(/(-?)(\d+(?:[.,]\d+)?)\s*([°º˚'"]?)/g)].map(m => ({
+    v: parseFloat(m[2].replace(',', '.')), dec: /[.,]/.test(m[2]), sym: m[3] === 'º' || m[3] === '˚' ? '°' : m[3],
+    neg: m[1] === '-' && (m.index === 0 || /[\s,;:]/.test(t[m.index - 1])) }));
+  const deg = i => {                    // degrees with °, then minutes ' and seconds " if they follow
+    let v = T[i].v, j = i + 1;
+    if (T[j] && T[j].sym === "'") {
+      if (T[j].v >= 60) return null; v += T[j].v / 60; j++;
+      if (T[j] && (T[j].sym === '"' || (!T[j].sym && T[j].v < 60 && (!T[j + 1] || T[j + 1].sym === '°')))) { if (T[j].v >= 60) return null; v += T[j].v / 3600; j++; }
+    }
+    return { v, j, neg: T[i].neg };
+  };
+  let a = null, b = null;
+  const i0 = T.findIndex((x, i) => x.sym === '°' && T[i + 1] && T[i + 1].sym === "'");
+  if (i0 >= 0) {                        // degrees and minutes (and seconds)
+    a = deg(i0); const i1 = a ? T.findIndex((x, i) => i >= a.j && x.sym === '°') : -1; b = i1 >= 0 ? deg(i1) : null;
+  } else {
+    const i = T.findIndex((x, k) => x.dec && T[k + 1] && T[k + 1].dec);
+    if (i >= 0) { a = { v: T[i].v, neg: T[i].neg }; b = { v: T[i + 1].v, neg: T[i + 1].neg }; }   // a pair of decimals
+    else if ([2, 4, 6].includes(T.length) && !T.some(x => x.sym)) {                                // plain numbers
+      const h = T.length / 2, part = k => T.slice(k * h, k * h + h);
+      if ([0, 1].every(k => part(k).slice(1).every(x => x.v < 60))) [a, b] = [0, 1].map(k => ({ v: part(k).reduce((s, x, n) => s + x.v / 60 ** n, 0), neg: part(k)[0].neg }));
+    }
+  }
+  if (!a || !b) return null;
+  let lat = a.v, lon = b.v;
   if (lat > lon) [lat, lon] = [lon, lat];                            // here the latitude is always the smaller
-  return { lat, lon, off: /-\s*\d|(^|[\s\d°′″'"])[SW](?![a-z])/i.test(t) };   // south or west: off this map
+  return { lat, lon, off: a.neg || b.neg || /(^|[\s\d°'"])[SW](?=$|[\s,;.])/.test(t) };   // south or west: off this map
 }
 const fmtDec = p => `${p.lat.toFixed(5).replace('.', ',')}° N, ${p.lon.toFixed(5).replace('.', ',')}° E`;
 const dms = (x, h) => { let s = Math.round(x * 3600); const d = Math.floor(s / 3600); s -= d * 3600; const m = Math.floor(s / 60); s -= m * 60; return `${d}°${String(m).padStart(2, '0')}′${String(s).padStart(2, '0')}″ ${h}`; };
 const fmtDMS = p => `${dms(p.lat, 'N')} ${dms(p.lon, 'E')}`;
+const onMap = p => { const w = project(p.lon, p.lat); return !p.off && w[0] >= LIMIT[0] && w[1] >= LIMIT[1] && w[0] <= LIMIT[0] + LIMIT[2] && w[1] <= LIMIT[1] + LIMIT[3]; };
+// The compass bearing from a to b: degrees clockwise from true north.
+const bearing = (a, b) => {
+  const r = Math.PI / 180, dl = (b.lon - a.lon) * r;
+  return (Math.atan2(Math.sin(dl) * Math.cos(b.lat * r), Math.cos(a.lat * r) * Math.sin(b.lat * r) - Math.sin(a.lat * r) * Math.cos(b.lat * r) * Math.cos(dl)) / r + 360) % 360;
+};
+if (store.dot && !(Array.isArray(store.dot) && store.dot.length === 2 && store.dot.every(Number.isFinite))) store.dot = null;
+if (!store.dot || (store.dotInfo && typeof store.dotInfo.n !== 'string')) store.dotInfo = null;
+// Asking an AI about a place: a prompt to paste into any AI app; its five-line reply goes in the same box.
+const AI_MARK = 'Reply with ONLY these five lines';
+const aiPrompt = place => `Where exactly is "${place}"? It is in or near Hồ Chí Minh City, Vietnam.
+
+${AI_MARK}, in exactly this format, and nothing else:
+PLACE: its name, in Vietnamese with tone marks
+COORDINATES: its latitude and longitude in decimal degrees with 5 decimals, written like 10,xxxxx° N, 106,xxxxx° E
+ADDRESS: its street address
+NOTE: one short sentence on what it is
+SOURCE: where the coordinates come from (for example Google Maps, OpenStreetMap or Wikipedia)
+
+Give the coordinates of the place itself (its entrance or its centre), not of its district or ward. If you are not sure where it is, write COORDINATES: unknown instead of guessing.`;
+function readAiReply(text) {           // reads what is put in the box: a coordinate, or an AI's reply
+  const t = String(text).replace(/\r/g, '').normalize('NFC');
+  if (t.includes(AI_MARK)) return { err: 'That is the prompt. Paste the AI’s reply instead.' };
+  const re = k => new RegExp(`^[ \\t>*_#•–—-]*(?:\\d+[.)][ \\t]*)?[*_]*(?:${k})[*_ \\t]*[:：][*_ \\t]*(.*)$`, 'im');
+  const field = k => { const m = t.match(re(k)); return m ? m[1].replace(/[*_`]+/g, '').trim() : null; };
+  const PLACE = 'PLACE|NAME|ĐỊA ĐIỂM|TÊN', COORD = 'COORDINATES?|TỌA ĐỘ|TOẠ ĐỘ', OTHER = 'ADDRESS|ĐỊA CHỈ|NOTE|GHI CHÚ|SOURCE|NGUỒN';
+  const labelled = re(`${PLACE}|${COORD}|${OTHER}`).test(t);
+  let p = null;
+  if (labelled) {
+    const c = field(COORD);
+    if (c !== null) {
+      if (!/\d/.test(c)) return { err: 'The AI didn’t give coordinates for this place.' };
+      if (!(p = readCoord(c))) return { err: 'Couldn’t read the COORDINATES line.' };
+    } else {
+      for (const line of t.split('\n')) if (/°|\d[.,]\d{3}/.test(line) && !re(`${PLACE}|${OTHER}`).test(line) && (p = readCoord(line))) break;
+      if (!p) return { err: 'No coordinates found in the reply.' };
+    }
+  } else if (!(p = readCoord(t.replace(/\n/g, ' ')))) {
+    return { err: /\n/.test(t) ? 'No coordinates found.' : 'Type it like 10,77252° N, 106,69802° E' };
+  }
+  if (p.off || !onMap(p)) return { err: 'That point is outside this map.' };
+  return { lat: p.lat, lon: p.lon, n: labelled ? field(PLACE) || '' : '', note: labelled ? field('NOTE|GHI CHÚ') || '' : '' };
+}
 
 /* Layers are cut into tiles that are skipped when off-screen, and simplified at a few
    levels of detail for when the map is zoomed out — so a redraw only touches what shows. */
@@ -1015,15 +1085,18 @@ function layoutLabels() {
   const make = (t, font, size, x, y, align, fill, halo, extra) =>
     ({ t, font, x, y, align, fill, halo, h: size * 1.25, w: textW(t, font, extra && extra.ls || 0), ...extra });
   const put = (L, force) => { const b = boxOf(L); if (!force && !free(b)) return false; taken.push(b); labels.push(L); return true; };
-  if (view === 'learn' && !session) {
+  if (view === 'learn' && !session && store.set.marks) {
     const dw = store.dot ? project(store.dot[1], store.dot[0]) : null;
-    if (dw && onCanvas(X(dw[0]), Y(dw[1]))) { const x = X(dw[0]), y = Y(dw[1]); taken.push([x - 10, y - 10, x + 10, y + 10]); dots.push({ x, y, kind: 'dot' }); }
+    let dot = null;
+    if (dw && onCanvas(X(dw[0]), Y(dw[1]))) { const x = X(dw[0]), y = Y(dw[1]); taken.push([x - 10, y - 10, x + 10, y + 10]); dot = { x, y, kind: 'dot' }; }
+    if (k >= 0.02 && onCanvas(X(CW[0]), Y(CW[1]))) { const x = X(CW[0]), y = Y(CW[1]); taken.push([x - 8, y - 8, x + 8, y + 8]); dots.push({ x, y, kind: 'centre' }); }
     if (k >= 0.02) for (const q of REFS) {
       const x = X(q.w[0]), y = Y(q.w[1]);
       if (!onCanvas(x, y)) continue;
       taken.push([x - 10, y - 10, x + 10, y + 10]); dots.push({ x, y, kind: 'ref', d: q.d });
       if (k >= 0.045) put(make(q.n, F.ref, 11.5, x + 13, y, 'left', V.ink, V.paper));
     }
+    if (dot) dots.push(dot);
   }
 
   // Unit names: try the label point, then a little above or below it inside the unit.
@@ -1092,6 +1165,11 @@ function drawDots(ctx, dots) {
       ctx.beginPath(); ctx.arc(d.x, d.y, 8.5, 0, Math.PI * 2); ctx.fillStyle = V.ink; ctx.fill();
       ctx.lineWidth = 1.5; ctx.strokeStyle = V.paper; ctx.stroke();
       ctx.font = `700 10px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = V.paper; ctx.fillText(d.d, d.x, d.y + .5);
+      continue;
+    }
+    if (d.kind === 'centre') {          // the centre of the cross
+      ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(d.x - 7, d.y); ctx.lineTo(d.x + 7, d.y); ctx.moveTo(d.x, d.y - 7); ctx.lineTo(d.x, d.y + 7);
+      ctx.lineWidth = 4.5; ctx.strokeStyle = V.paper; ctx.stroke(); ctx.lineWidth = 2; ctx.strokeStyle = V.ink; ctx.stroke(); ctx.lineCap = 'butt';
       continue;
     }
     if (d.kind === 'dot') {             // your dot
@@ -2015,28 +2093,58 @@ function setClean(on) {
 $('clean').onclick = () => setClean(!cleanOn);
 $('coordb').onclick = () => showCoords();
 function showCoords() {
-  const d = store.dot ? { lat: store.dot[0], lon: store.dot[1] } : null;
-  openSheet(`<div class="row drag-row"><div class="grow"><h2>Coordinates</h2><div class="sub">Type one as Apple Maps shows it, to put a dot there</div></div>${closeBtn('data-close')}</div>
-    <form class="answer" id="coordForm" autocomplete="off"><input id="coordIn" type="text" inputmode="text" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Coordinates" placeholder="10,77252° N, 106,69802° E" value="${d ? esc(fmtDec(d)) : ''}"><button type="submit" class="btn primary">Show</button></form>
-    ${d ? '<div class="btnrow"><button type="button" class="btn" id="coordClr">Remove the dot</button></div>' : ''}
+  const d = store.dot ? { lat: store.dot[0], lon: store.dot[1] } : null, info = d && store.dotInfo;
+  openSheet(`<div class="row drag-row"><div class="grow"><h2>Coordinates</h2><div class="sub">Type one as Apple Maps shows it, or paste an AI’s reply</div></div>${closeBtn('data-close')}</div>
+    <form class="answer" id="coordForm" autocomplete="off"><textarea id="coordIn" rows="1" inputmode="text" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Coordinates, or an AI’s reply" placeholder="10,77252° N, 106,69802° E"></textarea><button type="submit" class="btn primary">Show</button></form>
+    ${d ? `<p class="small">Red dot: ${info ? esc(info.n) + ', ' : ''}${fmtDec(d)}${info && info.note ? '. ' + esc(info.note) : ''}</p>` : ''}
+    <div class="btnrow"><button type="button" class="btn" id="marksBtn" aria-pressed="${!!store.set.marks}">${store.set.marks ? 'Hide markers' : 'Show markers'}</button>${d ? '<button type="button" class="btn" id="coordClr">Remove the dot</button>' : ''}</div>
+    <h3>Ask an AI about a place</h3>
+    <form class="answer" id="aiForm" autocomplete="off"><input id="aiPlace" type="text" inputmode="text" autocorrect="off" spellcheck="false" enterkeyhint="done" aria-label="Place to ask about" placeholder="e.g. Landmark 81"><button type="submit" class="btn">Copy prompt</button></form>
+    ${navigator.share ? '<div class="btnrow"><button type="button" class="btn" id="aiShare">Share the prompt…</button></div>' : ''}
+    <p class="small">Send the prompt to any AI app, copy its whole reply, paste it in the box above and tap Show. An AI’s coordinates can be off, sometimes by kilometres.</p>
     <h3>Four places to compare with</h3>
-    <div class="refs">${REFS.map((q, i) => `<button type="button" class="ref" data-ref="${i}"><span class="rb">${q.d}</span><span class="grow"><b>${esc(q.n)}</b><span class="small">${q.dir} of Bến Thành Market, ${kmBetween(BT, q).toFixed(1)} km</span><span class="rc">${fmtDec(q)}</span><span class="rc">${fmtDMS(q)}</span></span></button>`).join('')}</div>
-    <p class="small">A bigger first number (latitude) is further north; a bigger second number (longitude) is further east. Your dot is kept on this phone only.</p>`, true);
+    <div class="refs">${REFS.map((q, i) => `<button type="button" class="ref" data-ref="${i}"><span class="rb">${q.d}</span><span class="grow"><b>${esc(q.n)}</b><span class="small">${q.dir} of the centre +, ${kmBetween(CENTRE, q).toFixed(1)} km, bearing ${bearing(CENTRE, q).toFixed(1)}°</span><span class="rc">${fmtDec(q)}</span><span class="rc">${fmtDMS(q)}</span></span></button>`).join('')}</div>
+    <p class="small">The + is the centre of the cross, where the line from N to S meets the line from W to E: ${fmtDec(CENTRE)}, 0.7 km south-south-east of Bến Thành Market. A bigger first number (latitude) is further north; a bigger second number (longitude) is further east. On your iPhone, turn on Settings → Compass → Use True North: here magnetic north is 0.6° west of true north. Your dot is kept on this phone only.</p>`, true);
   sheetBody.querySelector('[data-close]').onclick = closeSheet;
-  $('coordForm').onsubmit = e => { e.preventDefault(); showCoord($('coordIn').value); };
+  const box = $('coordIn'), grow = () => { box.style.height = 'auto'; box.style.height = Math.min(box.scrollHeight + 2, innerHeight * .38) + 'px'; };
+  box.addEventListener('input', grow); grow();
+  box.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); showCoord(box.value); } });
+  $('coordForm').onsubmit = e => { e.preventDefault(); showCoord(box.value); };
+  $('marksBtn').onclick = () => {
+    store.set.marks = !store.set.marks; save(); paint();
+    const b = $('marksBtn'); b.textContent = store.set.marks ? 'Hide markers' : 'Show markers'; b.setAttribute('aria-pressed', String(store.set.marks));
+  };
   const clr = $('coordClr');
-  if (clr) clr.onclick = () => { store.dot = null; save(); paint(); closeSheet(); toast('Dot removed'); };
+  if (clr) clr.onclick = () => { store.dot = null; store.dotInfo = null; save(); paint(); closeSheet(); toast('Dot removed'); };
+  const prompt = () => { const q = $('aiPlace').value.trim(); if (!q) { toast('Type a place first'); return null; } return aiPrompt(q); };
+  $('aiForm').onsubmit = e => { e.preventDefault(); const t = prompt(); if (t) copyText(t).then(ok => toast(ok ? 'Prompt copied. Paste it into any AI app.' : 'Couldn’t copy. Try Share.', 3200)); };
+  const share = $('aiShare');
+  if (share) share.onclick = () => { const t = prompt(); if (t) navigator.share({ text: t }).catch(() => {}); };
   sheetBody.querySelectorAll('[data-ref]').forEach(b => b.onclick = () => { const q = REFS[+b.dataset.ref]; closeSheet(); flyTo([q.w[0] - 200, q.w[1] - 200, 400, 400], 1.04); });
 }
+// A typed coordinate, or an AI's reply: the red dot goes there.
 function showCoord(text) {
-  const p = readCoord(text);
-  if (!p) return toast('Type it like 10,77252° N, 106,69802° E', 3200);
-  const w = project(p.lon, p.lat);
-  if (p.off || w[0] < LIMIT[0] || w[1] < LIMIT[1] || w[0] > LIMIT[0] + LIMIT[2] || w[1] > LIMIT[1] + LIMIT[3]) return toast('That point is outside this map', 2600);
-  store.dot = [+p.lat.toFixed(6), +p.lon.toFixed(6)]; save(); paint();
-  const c = provinceAt(w), sh = c ? null : shapeAt(w);
+  const t = String(text).trim();
+  if (!t) return toast('Type a coordinate or paste an AI’s reply first', 3000);
+  const p = readAiReply(t);
+  if (p.err) return toast(p.err, 3200);
+  const info = p.n ? { n: p.n, note: p.note } : null;
+  store.dot = [+p.lat.toFixed(6), +p.lon.toFixed(6)]; store.dotInfo = info; store.set.marks = true; save(); paint();
+  const w = project(p.lon, p.lat), c = provinceAt(w), sh = c ? null : shapeAt(w);
   closeSheet(); flyTo([w[0] - 200, w[1] - 200, 400, 400], 1.04);
-  toast(`${fmtDec(p)} · ${c ? nm(BY[c]) : sh ? provOfShape(sh).full : 'beyond the provinces on this map'}`, 3600);
+  toast(`${info ? info.n : fmtDec(p)} · ${c ? nm(BY[c]) : sh ? provOfShape(sh).full : 'beyond the provinces on this map'}`, 3600);
+}
+// Copy inside the tap (iOS allows the clipboard only then), with the old way as a fallback.
+function copyText(text) {
+  const legacy = () => {
+    const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', '');
+    Object.assign(ta.style, { position: 'fixed', top: '0', left: '0', opacity: '0', fontSize: '16px' });
+    document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    ta.remove(); return ok;
+  };
+  if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text).then(() => true, legacy);
+  return Promise.resolve(legacy());
 }
 const fmtTime = ms => { const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 const scopeCodes = s => { s = normScope(s); return s === 'all' ? ALL.slice() : scopeIds(s).flatMap(i => regionCodes(i)); };
@@ -2366,7 +2474,7 @@ function showSources() {
   <p><b>Mist:</b> as in Map Learning, drawn by the graphics chip over the whole screen: clear over the city, the provinces around it and the sea within 60 km of them, thickening beyond and covering everything from about 240 km out.</p>
   <p><b>Numbering:</b> former districts in the order of the national statistical code list; wards by former district, then by their official code.</p>
   <p><b>Around Vietnam:</b> the neighbouring countries from Natural Earth (public domain). Biển Đông is labelled East Sea, the name Vietnam uses in English.</p>
-  <p><b>Coordinates:</b> the four places to compare with are from OpenStreetMap (© OpenStreetMap contributors, ODbL) and Wikidata (CC0). The box reads coordinates as Apple Maps writes them (10,77252° N, 106,69802° E), with dots, or in degrees, minutes and seconds as the Compass app shows them. Your dot is kept on your phone only.</p>
+  <p><b>Coordinates:</b> the four places to compare with are from OpenStreetMap (© OpenStreetMap contributors, ODbL) and Wikidata (CC0). The box reads coordinates as Apple Maps writes them (10,77252° N, 106,69802° E), with dots, or in degrees, minutes and seconds as the Compass app shows them. They form a cross: from the + where its lines meet (10,76639° N, 106,70005° E), each place is within 0.4° of due north, east, south or west. The markers show only when you switch them on. The box also reads an AI’s reply to the prompt the card writes; the app itself sends nothing anywhere. Magnetic north here is 0.6° west of true north (World Magnetic Model 2025). Your dot is kept on your phone only.</p>
   <p><b>Typeface:</b> Be Vietnam Pro (SIL Open Font License).</p>`, true);
   sheetBody.querySelector('[data-close]').onclick = progressDetails;
 }

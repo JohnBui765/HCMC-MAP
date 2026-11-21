@@ -31,13 +31,26 @@ Address: **https://johnbui765.github.io/HCMC-MAP/**
 - **Clean view.** The eye button at the bottom right (or H on a keyboard) hides the controls: the top
   card, the chips, the zoom and ⤢ buttons and the tab bar. The map, its taps and its cards keep working, and
   a practice question stays on screen. Tap the eye again to bring the controls back.
-- **Coordinates.** In Learn, the crosshair button above the eye opens a box: type a coordinate as
-  Apple Maps shows it (`10,77252° N, 106,69802° E`; dots, or degrees, minutes and seconds as the
-  Compass app shows them, work too) and the map puts a red dot there and names the ward. The same
-  card lists four places close to due north, east, south and west of Bến Thành Market, with their
-  coordinates, to compare with yours: Lái Thiêu Market (N), Cát Lái Port (E), Tôn Đức Thắng
-  University (S) and Đầm Sen Park (W). A bigger latitude is further north, a bigger longitude further
-  east. The dot is kept on your phone only (and in your backup file).
+- **Coordinates.** In Learn, the crosshair button above the eye opens one card:
+  - **One box.** Type a coordinate as Apple Maps shows it (`10,77252° N, 106,69802° E`; dots, either
+    order, or degrees, minutes and seconds as the Compass app shows them, work too), or paste an AI's
+    whole reply (below), and tap Show: the red dot goes there, the map flies to it and names the ward.
+  - **Ask an AI about a place.** Type a place and tap Copy prompt (or Share the prompt… on the
+    iPhone), send it to any AI app, copy its whole reply and paste it in the box. The prompt asks for
+    five lines (PLACE, COORDINATES, ADDRESS, NOTE, SOURCE); the box finds the coordinates even with
+    markdown, bullets or a code block, and refuses a point outside the map. An AI's coordinates can be
+    off, sometimes by kilometres.
+  - **Show markers / Hide markers.** The red dot, the four places and the + at their centre show on
+    the map only when switched on (off by default; showing a point switches them on). Never in
+    Practice.
+  - **Four places to compare with:** Lái Thiêu Market (N), Cát Lái Port (E), Tôn Đức Thắng University
+    (S) and Đầm Sen Park (W). They form a cross whose lines meet at the + (10,76639° N, 106,70005° E,
+    0.7 km south-south-east of Bến Thành Market); from it, each is within 0.4° of due north, east,
+    south or west. A bigger latitude is further north, a bigger longitude further east.
+  - **True north.** The map's compass needle points to true north (on this map north leans at most
+    0.36° from straight up anywhere in the city). On the iPhone, turn on Settings → Compass → Use True
+    North: here magnetic north is 0.6° west of true north.
+  - The dot is kept on your phone only (and in your backup file).
 - **Light only.** The map stays light even when the phone or the browser is set to dark mode.
 - **Mist like Map Learning's.** Drawn by the graphics chip over the whole screen: clear over the city, the
   provinces around it and the sea within 60 km of them, covering everything from about 240 km out,
@@ -92,7 +105,7 @@ exactly as above.
 - **Laptop:** open the link in Chrome or Edge and click the install icon in the address bar.
 
 After the first visit it works without internet. A phone that has an older version installed picks
-up this one the next time the app is opened online (the cache is now `hcmc-map-v6`); progress is
+up this one the next time the app is opened online (the cache is now `hcmc-map-v7`); progress is
 kept.
 
 ## Your progress
@@ -103,7 +116,7 @@ device. "Reset this level" erases only the level on show.
 
 ## After editing any file
 
-Change `VERSION` at the top of `sw.js` (for example to `PREFIX + 'v7'`). Otherwise installed
+Change `VERSION` at the top of `sw.js` (for example to `PREFIX + 'v8'`). Otherwise installed
 copies keep showing the cached version.
 
 ## Rebuilding the map data
@@ -183,5 +196,5 @@ smaller sizes from it; `maskable-512.png` has the outline at 77 % so it stays in
 - **Around Vietnam:** the neighbouring countries from Natural Earth (public domain), via the Vietnam
   63 app. Biển Đông is labelled East Sea, the name Vietnam uses in English.
 - **Coordinates of the four places to compare with:** OpenStreetMap (© OpenStreetMap contributors,
-  ODbL) and Wikidata (CC0).
+  ODbL) and Wikidata (CC0). Magnetic north: World Magnetic Model 2025 (NOAA and BGS).
 - **Typeface:** Be Vietnam Pro, SIL Open Font License 1.1 (see `OFL.txt`).
