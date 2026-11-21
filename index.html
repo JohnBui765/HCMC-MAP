@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script>/* Apple devices: Apple's system font (SF Pro). Elsewhere Inter: there Chrome would read the Apple keywords as the local system font. */ if (/Mac|iPhone|iPad|iPod/.test(navigator.userAgent)) document.documentElement.classList.add('apple');
+else for (const f of ['inter-latin-opsz-normal', 'inter-vietnamese-opsz-normal']) { const l = document.createElement('link'); l.rel = 'preload'; l.as = 'font'; l.type = 'font/woff2'; l.crossOrigin = ''; l.href = f + '.woff2'; document.head.appendChild(l); }</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>HCMC Map</title>
@@ -27,21 +29,16 @@
 <link rel="apple-touch-startup-image" media="screen and (device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash-1320x2868.png">
 <link rel="apple-touch-startup-image" media="screen and (device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash-1260x2736.png">
 <!--/STARTUP-->
-<link rel="preload" href="be-vietnam-pro-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="be-vietnam-pro-vietnamese-600-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="be-vietnam-pro-latin-400-italic.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="be-vietnam-pro-vietnamese-400-italic.woff2" as="font" type="font/woff2" crossorigin>
 <style>
-@font-face{font-family:'Be Vietnam Pro';font-style:normal;font-weight:400;font-display:swap;src:url(be-vietnam-pro-vietnamese-400-normal.woff2) format('woff2');unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;}
-@font-face{font-family:'Be Vietnam Pro';font-style:normal;font-weight:400;font-display:swap;src:url(be-vietnam-pro-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
-@font-face{font-family:'Be Vietnam Pro';font-style:normal;font-weight:600;font-display:swap;src:url(be-vietnam-pro-vietnamese-600-normal.woff2) format('woff2');unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;}
-@font-face{font-family:'Be Vietnam Pro';font-style:normal;font-weight:600;font-display:swap;src:url(be-vietnam-pro-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
-@font-face{font-family:'Be Vietnam Pro';font-style:normal;font-weight:700;font-display:swap;src:url(be-vietnam-pro-vietnamese-700-normal.woff2) format('woff2');unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;}
-@font-face{font-family:'Be Vietnam Pro';font-style:normal;font-weight:700;font-display:swap;src:url(be-vietnam-pro-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
-@font-face{font-family:'Be Vietnam Pro';font-style:italic;font-weight:400;font-display:swap;src:url(be-vietnam-pro-vietnamese-400-italic.woff2) format('woff2');unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;}
-@font-face{font-family:'Be Vietnam Pro';font-style:italic;font-weight:400;font-display:swap;src:url(be-vietnam-pro-latin-400-italic.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'Inter Display';font-style:normal;font-weight:100 900;font-display:swap;src:url(inter-display-vietnamese.woff2) format('woff2-variations');unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;}
+@font-face{font-family:'Inter Display';font-style:normal;font-weight:100 900;font-display:swap;src:url(inter-display-latin.woff2) format('woff2-variations');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(inter-vietnamese-opsz-normal.woff2) format('woff2-variations');unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;}
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(inter-latin-opsz-normal.woff2) format('woff2-variations');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url(inter-vietnamese-opsz-italic.woff2) format('woff2-variations');unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;}
+@font-face{font-family:'Inter';font-style:italic;font-weight:100 900;font-display:swap;src:url(inter-latin-opsz-italic.woff2) format('woff2-variations');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
 /* ---------- Tokens. The map's colours come with its data; the controls follow iOS. ---------- */
 :root {
+  --font: "Inter", system-ui, sans-serif;
   /* Tab bar: 52px of tabs, a hairline, and the Home indicator's safe area. Pure CSS, because iOS
      can report the safe area as 0 at launch and correct it later without a resize event. */
   --tabs-h: calc(52.5px + env(safe-area-inset-bottom, 0px));
@@ -80,7 +77,8 @@
 html, body {
   height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none;
   background: var(--fog); color: var(--ink);
-  font: 15px/1.45 "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 15px/1.45 var(--font);
+  -webkit-font-smoothing: antialiased; font-optical-sizing: auto;
   -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; -webkit-font-smoothing: antialiased;
 }
 body { position: fixed; inset: 0; touch-action: none; }
@@ -364,7 +362,7 @@ table.stats { width: 100%; border-collapse: collapse; font-variant-numeric: tabu
 @keyframes hlSpin { to { transform: rotate(360deg); } }
 #hl .lock { animation: hlLock .4s cubic-bezier(.2, .8, .3, 1) both; }
 @keyframes hlLock { from { transform: scale(1.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-#hl .read { font: 700 11px "Be Vietnam Pro", system-ui, sans-serif; fill: var(--ink); stroke: #fff; stroke-width: 3; paint-order: stroke; text-anchor: middle; }
+#hl .read { font: 600 11px var(--font); fill: var(--ink); stroke: #fff; stroke-width: 3; paint-order: stroke; text-anchor: middle; }
 #hl.rest * { animation: none !important; }
 #hl.rest .ring { opacity: 0; }
 #hl.rest .ring.r1 { opacity: .55; transform: scale(2); }
@@ -380,9 +378,20 @@ table.stats { width: 100%; border-collapse: collapse; font-variant-numeric: tabu
 #compass svg { display: block; width: 34px; height: 34px; }
 #compass .n { fill: #e0413b; }
 #compass .s { fill: var(--muted); }
-#compass text { fill: var(--ink); font: 700 7.5px "Be Vietnam Pro", system-ui, sans-serif; }
+#compass text { fill: var(--ink); font: 700 7.5px var(--font); }
 @media (min-width: 900px) { #compass { top: calc(env(safe-area-inset-top, 0px) + 14px); } }
 .clean:not(.round) #compass { top: calc(env(safe-area-inset-top, 0px) + 12px); }
+html.apple { --font: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; }
+/* ---------- The breadcrumb: the district and ward at the middle of the screen, once zoomed in ---------- */
+#crumb { position: fixed; z-index: 9; left: calc(env(safe-area-inset-left, 0px) + 10px); top: calc(max(var(--slip-b, 0px), env(safe-area-inset-top, 0px)) + 12px);
+  max-width: calc(100vw - 96px); display: flex; align-items: center; gap: 7px; padding: 6px 12px 6px 10px; border: .5px solid var(--hair); border-radius: 999px;
+  box-shadow: 0 1px 4px rgba(16, 32, 44, .18); color: var(--ink); font: 500 12.5px/1.25 var(--font); white-space: nowrap; }
+#crumb[hidden] { display: none; }
+#crumb .cd { flex: none; width: 9px; height: 9px; border-radius: 50%; }
+#crumb .sep { color: var(--muted); font-weight: 400; }
+#crumb .w { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
+@media (min-width: 900px) { #crumb { left: auto; right: calc(env(safe-area-inset-right, 0px) + 62px); top: calc(env(safe-area-inset-top, 0px) + 16px); max-width: 420px; } }
+.clean:not(.round) #crumb { top: calc(env(safe-area-inset-top, 0px) + 14px); }
 </style>
 </head>
 <body>
@@ -403,6 +412,7 @@ table.stats { width: 100%; border-collapse: collapse; font-variant-numeric: tabu
 <div id="zfit" class="ctrl material"><button type="button" id="zfitb" aria-label="Show the whole area"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5v-4h4M16.5 7.5v-4h-4M3.5 12.5v4h4M16.5 12.5v4h-4"/></svg></button></div>
 <div id="cleanw" class="ctrl material"><button type="button" id="clean" aria-pressed="false" aria-label="Clean view" title="Hide the controls"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 10s2.8-5 7.5-5 7.5 5 7.5 5-2.8 5-7.5 5-7.5-5-7.5-5Z"/><circle cx="10" cy="10" r="2.3"/><path d="M3.5 16.5 16.5 3.5"/></svg></button></div>
 <div id="coordw" class="ctrl material"><button type="button" id="coordb" aria-label="Coordinates" title="Coordinates"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="6"/><path d="M10 1.8v3.6M10 14.6v3.6M1.8 10h3.6M14.6 10h3.6"/><circle cx="10" cy="10" r="1.4" fill="currentColor" stroke="none"/></svg></button></div>
+<button type="button" id="crumb" class="material" title="Show the whole former district" hidden></button>
 <div id="compass" class="material" aria-hidden="true"><svg viewBox="0 0 34 34"><g id="needle"><text x="17" y="9.4" text-anchor="middle">N</text><path class="n" d="M17 11.2 20.2 18h-6.4z"/><path class="s" d="M17 26.8 13.8 18h6.4z"/></g></svg></div>
 <div id="chips" role="toolbar" aria-label="Areas"></div>
 <nav class="tabs material" role="tablist" aria-label="Sections">
@@ -1111,10 +1121,114 @@ function renderMain() {
   mctx.restore();
   mctx.setTransform(sx, 0, 0, sy, sx * pad.x, sy * pad.y);
   const L = layoutLabels();
+  drawLabels(mctx, L.under);
   drawDots(mctx, L.dots);
   drawLabels(mctx, L.labels);
   drawRings(mctx);
   updateHL();
+  updateCrumb();
+}
+// A group's ink: the average of its units' colours in OKLab, set to one lightness (0.44) for every
+// group, with a moderate chroma, so that no group's name looks heavier than another's.
+const lin = c => (c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4), gam = c => (c <= .0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - .055);
+function oklab(hex) {
+  const [r, g, b] = hex2rgb(hex).map(v => lin(v / 255));
+  const l = Math.cbrt(.4122214708 * r + .5363325363 * g + .0514459929 * b), m = Math.cbrt(.2119034982 * r + .6806995451 * g + .1073969566 * b), q = Math.cbrt(.0883024619 * r + .2817188376 * g + .6299787005 * b);
+  return [.2104542553 * l + .793617785 * m - .0040720468 * q, 1.9779984951 * l - 2.428592205 * m + .4505937099 * q, .0259040371 * l + .7827717662 * m - .808675766 * q];
+}
+function fromOklab([L, A, B]) {
+  const l = (L + .3963377774 * A + .2158037573 * B) ** 3, m = (L - .1055613458 * A - .0638541728 * B) ** 3, q = (L - .0894841775 * A - 1.291485548 * B) ** 3;
+  return '#' + [4.0767416621 * l - 3.3077115913 * m + .2309699292 * q, -1.2684380046 * l + 2.6097574011 * m - .3413193965 * q, -.0041960863 * l - .7034186147 * m + 1.707614701 * q]
+    .map(v => Math.round(Math.min(1, Math.max(0, gam(v))) * 255).toString(16).padStart(2, '0')).join('');
+}
+const groupInk = (() => {
+  const cache = {};
+  return i => {
+    const key = LEVEL + i; if (cache[key]) return cache[key];
+    const us = PROV.filter(p => p.r === i); if (!us.length) return (cache[key] = V.muted);
+    const o = us.map(p => oklab(atlasOf(p))), a = o.reduce((t, v) => t + v[1], 0) / o.length, b = o.reduce((t, v) => t + v[2], 0) / o.length;
+    const c = Math.hypot(a, b), cc = Math.min(.085, Math.max(.03, c * 1.6)), f = c ? cc / c : 0;
+    return (cache[key] = fromOklab([.44, a * f, b * f]));
+  };
+})();
+// The unit under a world point, through a grid of 2.5 km cells (for the group names' inside test).
+const unitGrid = (() => {
+  const cache = {};
+  return () => {
+    if (cache[LEVEL]) return cache[LEVEL];
+    const C = 250, cells = new Map();
+    for (const p of PROV) {
+      const b = p.fb;
+      for (let gx = Math.floor(b[0] / C); gx <= Math.floor((b[0] + b[2]) / C); gx++)
+        for (let gy = Math.floor(b[1] / C); gy <= Math.floor((b[1] + b[3]) / C); gy++) { const key = gx * 100000 + gy; if (!cells.has(key)) cells.set(key, []); cells.get(key).push(p); }
+    }
+    return (cache[LEVEL] = { C, cells });
+  };
+})();
+const fitCache = { k: 0, lv: '', m: new Map() };
+const borderGrid = (() => {
+  const cache = {};
+  return () => {
+    if (cache[LEVEL]) return cache[LEVEL];
+    const C = 250, cells = new Map();
+    for (const e of LV[LEVEL].edges) {
+      if (e.q && e.p.r === e.q.r) continue;                 // between two units of one group: not a group border
+      const x0 = Math.min(e.a[0], e.b[0]), x1 = Math.max(e.a[0], e.b[0]), y0 = Math.min(e.a[1], e.b[1]), y1 = Math.max(e.a[1], e.b[1]);
+      for (let gx = Math.floor(x0 / C); gx <= Math.floor(x1 / C); gx++)
+        for (let gy = Math.floor(y0 / C); gy <= Math.floor(y1 / C); gy++) { const key = gx * 100000 + gy; if (!cells.has(key)) cells.set(key, []); cells.get(key).push(e); }
+    }
+    return (cache[LEVEL] = { C, cells });
+  };
+})();
+// Does any group border cross the world rectangle? (Liang–Barsky clipping of each nearby segment.)
+function borderIn(x0, y0, x1, y1) {
+  const { C, cells } = borderGrid(), seen = new Set();
+  for (let gx = Math.floor(x0 / C); gx <= Math.floor(x1 / C); gx++) for (let gy = Math.floor(y0 / C); gy <= Math.floor(y1 / C); gy++) {
+    const list = cells.get(gx * 100000 + gy); if (!list) continue;
+    for (const e of list) {
+      if (seen.has(e)) continue; seen.add(e);
+      const ax = e.a[0], ay = e.a[1], dx = e.b[0] - ax, dy = e.b[1] - ay; let t0 = 0, t1 = 1, ok = true;
+      for (const [pp, qq] of [[-dx, ax - x0], [dx, x1 - ax], [-dy, ay - y0], [dy, y1 - ay]]) {
+        if (pp === 0) { if (qq < 0) { ok = false; break; } continue; }
+        const t = qq / pp;
+        if (pp < 0) { if (t > t1) { ok = false; break; } if (t > t0) t0 = t; } else { if (t < t0) { ok = false; break; } if (t < t1) t1 = t; }
+      }
+      if (ok) return true;
+    }
+  }
+  return false;
+}
+function unitAtFast(x, y) {
+  const { C, cells } = unitGrid(), list = cells.get(Math.floor(x / C) * 100000 + Math.floor(y / C));
+  if (list) for (const p of list) { const b = p.fb; if (x >= b[0] && y >= b[1] && x <= b[0] + b[2] && y <= b[1] + b[3] && inRings(p.rings, x, y)) return p; }
+  return null;
+}
+const groupSpots = (() => {
+  const cache = {};
+  return i => {
+    const key = LEVEL + i; if (cache[key]) return cache[key];
+    return (cache[key] = [REGIONS[i].lab, ...PROV.filter(p => p.r === i).sort((a, b) => b.sz - a.sz).slice(0, 5).map(p => p.lab)]);
+  };
+})();
+// The breadcrumb: the group and the unit at the middle of the screen, once the group's own name is
+// faint or gone. Learn only; it follows the Names and Former districts switches. Tap: the whole group.
+let crumbHTML = '', crumbI = -1;
+function updateCrumb() {
+  let html = '', gi = -1;
+  if (view === 'learn' && !session && fillMode === 'atlas' && (store.set.groups || store.set.names)) {
+    const r = freeRect(), c = provinceAt([(r.x + r.w / 2 - com.x) / com.k, (r.y + r.h / 2 - com.y) / com.k]);
+    const p = c && BY[c], g = p && REGIONS[p.r];
+    if (g && g.sz * com.k >= 200) {
+      gi = p.r;
+      const gn = store.set.groups ? `<span class="cd" style="background:${groupInk(p.r)}"></span><span>${esc(groupShort(g))}</span>` : '';
+      const wn = store.set.names ? `<span class="w">${esc(nm(p))}</span>` : '';
+      html = gn + (gn && wn ? '<span class="sep">›</span>' : '') + wn;
+    }
+  }
+  crumbI = gi;
+  if (html === crumbHTML) return;
+  const el = $('crumb'); crumbHTML = html; el.innerHTML = html; el.hidden = !html;
+  el.title = LEVEL === 'w' ? 'Show the whole former district' : 'Show the whole former province';
 }
 // The picked place's highlight, in an SVG layer that moves with the map: Ping, Glow or Reticle. It
 // settles after 10 s, and is still from the start with Reduce Motion.
@@ -1147,12 +1261,16 @@ function updateHL() {
 }
 
 /* ---------- 5. Labels: placed so that none overlap; what doesn't fit waits for more zoom ---------- */
-const FONT = '"Be Vietnam Pro", system-ui, -apple-system, sans-serif';
+// SF Pro (the system font) on Apple devices; Inter elsewhere, and from 18 px Inter's display cut
+// (Apple devices switch SF Pro Text to SF Pro Display by themselves).
+const APPLE = document.documentElement.classList.contains('apple');
+const FONT = APPLE ? '-apple-system, BlinkMacSystemFont, "Inter", sans-serif' : '"Inter", sans-serif';
+const FONT_D = APPLE ? FONT : '"Inter Display", "Inter", sans-serif';
 const F = {
-  prov: s => `600 ${s}px ${FONT}`, cap: `italic 400 11px ${FONT}`, num: `700 10.5px ${FONT}`,
+  prov: s => `500 ${s}px ${FONT}`, cap: `italic 400 11px ${FONT}`, num: `600 10.5px ${FONT}`,
   ctry: `600 12px ${FONT}`, water: `italic 400 12.5px ${FONT}`, waterBig: `italic 400 17px ${FONT}`,
   island: `italic 400 11.5px ${FONT}`, ncap: `400 11px ${FONT}`, arch: `italic 600 12.5px ${FONT}`, archSub: `italic 400 11px ${FONT}`,
-  ctryBig: `600 17px ${FONT}`, ref: `600 11.5px ${FONT}`,
+  ctryBig: `600 17px ${FONT}`, ref: `500 11.5px ${FONT}`, dist: s => `600 ${s}px ${s >= 18 ? FONT_D : FONT}`,
 };
 const measure = document.createElement('canvas').getContext('2d');
 const widths = new Map();
@@ -1162,7 +1280,7 @@ function textW(t, font, ls = 0) {
   if (w == null) { measure.font = font; w = measure.measureText(t).width; widths.set(key, w); }
   return w + ls * Math.max(0, [...t].length - 1);
 }
-F.grp = `600 11px ${FONT}`; F.city = `700 11.5px ${FONT}`; F.pv = `600 11px ${FONT}`;
+F.grp = `600 11px ${FONT}`; F.city = `600 12px ${FONT}`; F.pv = `500 11px ${FONT}`;
 function layoutLabels() {
   const k = com.k, X = wx => com.x + k * wx, Y = wy => com.y + k * wy;
   const x0 = -pad.x, y0 = -pad.y, x1 = vw + pad.x, y1 = vh + pad.y;
@@ -1180,6 +1298,7 @@ function layoutLabels() {
   const make = (t, font, size, x, y, align, fill, halo, extra) =>
     ({ t, font, x, y, align, fill, halo, h: size * 1.25, w: textW(t, font, extra && extra.ls || 0), ...extra });
   const put = (L, force) => { const b = boxOf(L); if (!force && !free(b)) return false; taken.push(b); labels.push(L); return true; };
+  { const cr = document.getElementById('crumb'); if (cr && !cr.hidden) { const q = cr.getBoundingClientRect(); if (q.width) taken.push([q.left - 4, q.top - 4, q.right + 4, q.bottom + 4]); } }
   if (view === 'learn' && !session && store.set.marks) {
     const dw = store.dot ? project(store.dot[1], store.dot[0]) : null;
     let dot = null;
@@ -1233,17 +1352,49 @@ function layoutLabels() {
   // The groups' names where there is room: the former districts over the wards, the former provinces
   // over the districts, while a group is small enough on screen to need it. At the city's scale
   // they come before the units' own names; nearer in, after them.
-  const groups = (lo, hi) => {
+  // Group names (former districts over the wards, former provinces over the districts), in one calm
+  // style: semibold capitals in a deep tone of the group's own colour, all of the same perceived
+  // darkness. A name is placed only where it lies wholly inside its own group (checked at 15 points
+  // across it), at its pole of inaccessibility or one of its largest units, at one of three sizes, on
+  // one line or two. Small groups get a solid name before the units' names; large ones a faint
+  // watermark under them; if nothing fits, no name (the breadcrumb names the group).
+  const under = [], ub = [];
+  const overlaps = (a, b) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
+  // Wholly inside its group: the label's centre lies in the group and no group border (between two
+  // groups, or the city's outline) crosses its box. Exact, and remembered for the zoom (a pan reuses it).
+  if (fitCache.k !== k || fitCache.lv !== LEVEL) { fitCache.m.clear(); fitCache.k = k; fitCache.lv = LEVEL; }
+  const inside = (b, i, key) => {
+    if (fitCache.m.has(key)) return fitCache.m.get(key);
+    const u = unitAtFast(((b[0] + b[2]) / 2 - com.x) / k, ((b[1] + b[3]) / 2 - com.y) / k);
+    const ok = !!u && u.r === i && !borderIn((b[0] - com.x) / k, (b[1] - com.y) / k, (b[2] - com.x) / k, (b[3] - com.y) / k);
+    fitCache.m.set(key, ok); return ok;
+  };
+  const groups = solid => {
     if (far || fillMode !== 'atlas' || !store.set.groups) return;
     REGIONS.forEach((g, i) => {
       const s = g.sz * k;
-      if (s < lo || s > hi || (focusGroup != null && i !== focusGroup) || (LEVEL === 'd' && selected && U(selected).r !== i)) return;
-      put(make((LEVEL === 'w' ? g.n : g.label).toUpperCase(), F.grp, 11, X(g.lab[0]), Y(g.lab[1]), 'center', V.muted, V.paper, { ls: 1.2 }));
+      if ((focusGroup != null && i !== focusGroup) || (LEVEL === 'd' && selected && U(selected).r !== i)) return;
+      if (solid ? s < 14 || s >= 150 : s < 150 || s >= 560) return;
+      const name = (LEVEL === 'w' ? g.n : g.label).toUpperCase(), forms = [[name]], words = name.split(' ');
+      if (words.length > 1 && !/^\d+$/.test(words[words.length - 1])) {
+        let best = null;
+        for (let n = 1; n < words.length; n++) { const a = words.slice(0, n).join(' '), b = words.slice(n).join(' '), d = Math.abs(a.length - b.length); if (!best || d < best[2]) best = [a, b, d]; }
+        forms.push(best.slice(0, 2));
+      }
+      const ink = groupInk(i), alpha = solid ? 1 : .46 - .3 * (s - 150) / 410, spots = groupSpots(i);
+      for (const z of solid ? [14, 12.5, 11] : [22, 19, 16]) for (const lines of forms) for (const [si, c] of spots.entries()) {
+        const x = X(c[0]), y = Y(c[1]), lh = z * 1.15;
+        const Ls = lines.map((t, n) => make(t, F.dist(z), z, x, y + (n - (lines.length - 1) / 2) * lh, 'center', ink, solid ? V.paper : null, { ls: z * (solid ? .06 : .05), alpha, gi: i }));
+        const bs = Ls.map(boxOf);
+        if (!bs.every(free) || (!solid && ub.some(u => bs.some(b => overlaps(u, b))))) continue;
+        if (!bs.every((b, n) => inside(b, i, `${i}|${z}|${lines.length}|${si}|${n}`))) continue;
+        if (solid) { taken.push(...bs); labels.push(...Ls); } else { ub.push(...bs); under.push(...Ls); }
+        return;
+      }
     });
   };
-  groups(18, 140);
+  groups(true);
   if (!far) for (const p of bySize) if (!forcedLabel.has(p.c) && labelWanted(p) && p.sz * k > 26) placeProv(p);
-  groups(140, 260);
   // Wards too small for their name show their number from the table instead. (Not districts:
   // a bare number beside District 1–12 would read as a district.)
   if (numbersWanted && !far && LEVEL === 'w') for (const p of bySize) if (!placed.has(p.c) && labelWanted(p) && p.sz * k >= 7) {
@@ -1262,7 +1413,8 @@ function layoutLabels() {
   }
   for (const c of D.deco.islands.filter(clear)) put(make(c.t, F.island, 11.5, X(c.at[0]), Y(c.at[1]), 'center', V.muted, null));
   for (const w of D.deco.water.filter(clear)) if (k >= (w.minK || 0) && !(w.wide && k > 0.7 * kFit)) put(w.big ? make(w.t, F.waterBig, 17, X(w.at[0]), Y(w.at[1]), 'center', V.seaInk, null, { ls: 3 }) : make(w.t, F.water, 12.5, X(w.at[0]), Y(w.at[1]), 'center', V.seaInk, null));
-  return { labels, dots };
+  groups(false);                        // the watermarks last: they go only where nothing else is
+  return { labels, dots, under };
 }
 function drawDots(ctx, dots) {
   for (const d of dots) {
@@ -1313,7 +1465,7 @@ function drawLabels(ctx, labels) {
     }
     if (nativeSpacing) ctx.letterSpacing = ls + 'px';
     ctx.textAlign = L.align;
-    if (L.halo) { ctx.lineWidth = 3; ctx.strokeStyle = L.halo; ctx.strokeText(L.t, L.x, L.y); }
+    if (L.halo) { ctx.globalAlpha = (L.alpha || 1) * .9; ctx.lineWidth = 2.4; ctx.strokeStyle = L.halo; ctx.strokeText(L.t, L.x, L.y); ctx.globalAlpha = L.alpha || 1; }
     ctx.fillStyle = L.fill; ctx.fillText(L.t, L.x, L.y);
   }
   if (nativeSpacing) ctx.letterSpacing = '0px';
@@ -2212,6 +2364,7 @@ function setClean(on) {
 }
 $('clean').onclick = () => setClean(!cleanOn);
 $('coordb').onclick = () => showCoords();
+$('crumb').onclick = () => { if (crumbI >= 0) fitScope(regionCodes(crumbI)); };
 function whereIs(q) { const w = project(q.lon, q.lat), c = provinceAt(w), sh = c ? null : shapeAt(w); return c ? nm(BY[c]) : sh ? provOfShape(sh).full : 'beyond the provinces on this map'; }
 function placeAt(w) {                   // a shown saved place under the finger
   let best = null, bd = 18;
@@ -2738,7 +2891,7 @@ function showSources() {
   <p><b>Numbering:</b> former districts in the order of the national statistical code list; wards by former district, then by their official code.</p>
   <p><b>Around Vietnam:</b> the neighbouring countries from Natural Earth (public domain). Biển Đông is labelled East Sea, the name Vietnam uses in English.</p>
   <p><b>Coordinates:</b> the four places to compare with are from OpenStreetMap (© OpenStreetMap contributors, ODbL) and Wikidata (CC0). The box reads coordinates as Apple Maps writes them (10,77252° N, 106,69802° E), with dots, or in degrees, minutes and seconds as the Compass app shows them. They form a cross: from the + where its lines meet (10,76639° N, 106,70005° E), each place is within 0.4° of due north, east, south or west. The markers show only when you switch them on. The box also reads an AI’s reply to the prompt the card writes; the app itself sends nothing anywhere. Magnetic north here is 0.6° west of true north (World Magnetic Model 2025). Saved places sit in tags you name and colour; each shows its distance and bearing from your red dot. A picked place is highlighted with Ping, Glow or Reticle (your choice), still after 10 seconds or with Reduce Motion. Your red dot, tags and places are kept on your phone only (and in your backup file); Export makes a .json file of the tags and places (not the red dot), and Import adds the places from such a file.</p>
-  <p><b>Typeface:</b> Be Vietnam Pro (SIL Open Font License).</p>`, true);
+  <p><b>Typeface:</b> on iPhone, iPad and Mac, Apple’s own system font (SF Pro); elsewhere Inter by Rasmus Andersson (SIL Open Font License), which comes with the app. Both carry full Vietnamese, and both switch between a text cut for small sizes and a display cut for large ones.</p>`, true);
   sheetBody.querySelector('[data-close]').onclick = progressDetails;
 }
 
@@ -3286,8 +3439,8 @@ commit();
 // The soft backdrops only show while the map moves: paint them just after the first frame.
 setTimeout(renderBack, 30);
 // Canvas text needs the typeface loaded; measure again once it is.
-if (document.fonts && document.fonts.load) {
-  Promise.all(['600 12px', 'italic 400 11px', '700 10px', '400 11px'].map(f => document.fonts.load(`${f} "Be Vietnam Pro"`, 'Aă Đđ Ơơ Ưư ỗ')))
+if (!APPLE && document.fonts && document.fonts.load) {
+  Promise.all(['500 12px "Inter"', '600 12px "Inter"', 'italic 400 12px "Inter"', '600 20px "Inter Display"'].map(f => document.fonts.load(`${f}`, 'Aă Đđ Ơơ Ưư ỗ')))
     .then(() => { widths.clear(); invalidate(); }).catch(() => {});
 }
 setTimeout(startFog, 120);

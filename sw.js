@@ -2,7 +2,7 @@
 // All the owner's apps share one origin (johnbui765.github.io), so this worker only ever opens or
 // deletes caches whose names start with PREFIX, and looks files up in its own cache only.
 const PREFIX = 'hcmc-map-';
-const VERSION = PREFIX + 'v8';
+const VERSION = PREFIX + 'v9';
 const ASSETS = [
   "./",
   "./index.html",
@@ -12,21 +12,21 @@ const ASSETS = [
   "./maskable-512.png",
   "./apple-touch-icon.png",
   "./favicon-32.png",
-  "./be-vietnam-pro-vietnamese-400-normal.woff2",
-  "./be-vietnam-pro-latin-400-normal.woff2",
-  "./be-vietnam-pro-vietnamese-600-normal.woff2",
-  "./be-vietnam-pro-latin-600-normal.woff2",
-  "./be-vietnam-pro-vietnamese-700-normal.woff2",
-  "./be-vietnam-pro-latin-700-normal.woff2",
-  "./be-vietnam-pro-vietnamese-400-italic.woff2",
-  "./be-vietnam-pro-latin-400-italic.woff2"
+  "./inter-vietnamese-opsz-normal.woff2",
+  "./inter-latin-opsz-normal.woff2",
+  "./inter-vietnamese-opsz-italic.woff2",
+  "./inter-display-vietnamese.woff2",
+  "./inter-display-latin.woff2",
+  "./inter-latin-opsz-italic.woff2"
 ];
 
 self.addEventListener('install', event => {
   // cache: 'reload' skips the browser's HTTP cache, so a new version never stores the old files.
   // The page itself must be cached; a missing icon or font must not block an update.
+  // Apple devices use their own system font, so they skip the bundled fonts.
+  const apple = /Mac|iPhone|iPad|iPod/.test((self.navigator && self.navigator.userAgent) || '');
   event.waitUntil(caches.open(VERSION)
-    .then(cache => Promise.all(ASSETS.map((url, i) => cache.add(new Request(url, { cache: 'reload' })).catch(err => { if (i < 2) throw err; }))))
+    .then(cache => Promise.all(ASSETS.filter(url => !(apple && url.endsWith('.woff2'))).map((url, i) => cache.add(new Request(url, { cache: 'reload' })).catch(err => { if (i < 2) throw err; }))))
     .then(() => self.skipWaiting()));
 });
 

@@ -89,6 +89,18 @@ Address: **https://johnbui765.github.io/HCMC-MAP/**
   into. Tap a name to jump to the other level.
 - **Labels never overlap.** Names that don't fit wait until you zoom in; small wards show their
   number from the Table. The inner city is dense (22 wards are under 2 km²), so zoom in there.
+- **District names inside their districts.** With Former districts on, each former district's name is
+  set in a deep tone of its own colour (every district at the same perceived darkness), at the point
+  deepest inside it, and only where it fits wholly inside the district: on one line or two (PHÚ /
+  NHUẬN), at one of three sizes. While a district is small on screen its name is solid; zoom in and it
+  becomes a large, faint watermark under the ward names; nearer still it gives way to the
+  **breadcrumb** at the top, which names the district and the ward at the middle of the screen (tap it
+  to see the whole district). The same for the former provinces at the Districts level. The
+  breadcrumb follows the Names and Former districts switches and is hidden in Practice.
+- **Typeface.** On iPhone, iPad and Mac the app uses Apple's own system font, SF Pro; elsewhere it
+  uses Inter, which comes with it. Both carry full Vietnamese, and both switch between a text cut for
+  small sizes and a display cut for large ones. Ward names are set in Medium, district names in
+  Semibold capitals, with a thin, soft halo.
 - **Practice** as in Map Learning: Daily review, Find it, Name it, Neighbours, Rebuild and Sprint,
   over the whole city or any mix of former districts (or former provinces). Typed answers ignore
   tone marks and the type words in Vietnamese or English (phường, xã, quận, huyện; ward, commune,
@@ -119,7 +131,7 @@ exactly as above.
 - **Laptop:** open the link in Chrome or Edge and click the install icon in the address bar.
 
 After the first visit it works without internet. A phone that has an older version installed picks
-up this one the next time the app is opened online (the cache is now `hcmc-map-v8`); progress is
+up this one the next time the app is opened online (the cache is now `hcmc-map-v9`); progress is
 kept.
 
 ## Your progress
@@ -130,7 +142,7 @@ device. "Reset this level" erases only the level on show.
 
 ## After editing any file
 
-Change `VERSION` at the top of `sw.js` (for example to `PREFIX + 'v9'`). Otherwise installed
+Change `VERSION` at the top of `sw.js` (for example to `PREFIX + 'v10'`). Otherwise installed
 copies keep showing the cached version.
 
 ## Rebuilding the map data
@@ -211,4 +223,6 @@ smaller sizes from it; `maskable-512.png` has the outline at 77 % so it stays in
   63 app. Biển Đông is labelled East Sea, the name Vietnam uses in English.
 - **Coordinates of the four places to compare with:** OpenStreetMap (© OpenStreetMap contributors,
   ODbL) and Wikidata (CC0). Magnetic north: World Magnetic Model 2025 (NOAA and BGS).
-- **Typeface:** Be Vietnam Pro, SIL Open Font License 1.1 (see `OFL.txt`).
+- **Typeface:** SF Pro, Apple's system font, on Apple devices (not included: the device supplies it);
+  elsewhere Inter by The Inter Project Authors (rsms/inter), SIL Open Font License 1.1 (see `OFL.txt`).
+  `inter-display-*.woff2` are Inter's own display optical size (32), fixed with fontTools.
